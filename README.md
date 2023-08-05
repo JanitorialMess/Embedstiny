@@ -14,6 +14,8 @@ Embedstiny is a browser extension that allows you to embed links in DGG chat. It
   <img src="https://img.shields.io/amo/v/embedstiny?label=Download%20Firefox&logo=Firefox-Browser&style=for-the-badge" alt="Get Embedstiny for Firefox"></a>
   <br>
   <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.4.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
+ <p align="center"><b>⚠️ Fair warning </b> for Chromium users, the extension will not auto-update. Please check the repo for updates regularly while I am working on a solution
+</p>
 </p>
 
 ## Features
@@ -56,8 +58,6 @@ Due to manifest v3 restrictions, Embedstiny is not available on the Chrome Web S
 <p>
   <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest" target="_blank"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.4.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
 </p>
-
-To sideload the Embedstiny extension for Chrome, follow these steps:
 
 1. [Download latest release](https://github.com/JanitorialMess/Embedstiny/releases/latest) and unzip the archive.
 2. Open Chrome and go to the Extensions page by clicking the menu button (three vertical dots) in the top-right corner, then selecting "More tools" > "Extensions". Alternatively, you can type `chrome://extensions` in the address bar and press Enter.
