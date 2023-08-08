@@ -1,6 +1,6 @@
 <h1 align="center">
   <sub>
-    <img src="./store_assets/embedstiny-icon.svg" height="38" width="38" alt="Embedstiny Icon">
+    <img src="./store_assets/embedstiny.svg" height="38" width="38" alt="Embedstiny Icon">
   </sub>
   Embedstiny
 </h1>
@@ -13,7 +13,7 @@ Embedstiny is a browser extension that allows you to embed links in DGG chat. It
   <a href="https://addons.mozilla.org/en-US/firefox/addon/embedstiny/">
   <img src="https://img.shields.io/amo/v/embedstiny?label=Download%20Firefox&logo=Firefox-Browser&style=for-the-badge" alt="Get Embedstiny for Firefox"></a>
   <br>
-  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.7.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
+  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.8.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
  <p align="center"><b>⚠️ Fair warning </b> for Chromium users, the extension will not auto-update. Please check the repo for updates regularly while I am working on a solution
 </p>
 </p>
@@ -56,7 +56,7 @@ Embedstiny is available on the Firefox Add-ons store. Simply click the link belo
 Due to manifest v3 restrictions, Embedstiny is not available on the Chrome Web Store. I am working on a solution, but in the meantime, you can sideload the extension by following the instructions below.
 
 <p>
-  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest" target="_blank"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.7.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
+  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest" target="_blank"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.8.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
 </p>
 
 1. [Download latest release](https://github.com/JanitorialMess/Embedstiny/releases/latest) and unzip the archive.
