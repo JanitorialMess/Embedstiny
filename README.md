@@ -31,13 +31,13 @@ Embedstiny is a browser extension that allows you to embed links in DGG chat. It
 ### Options
 
 <p align="center">
-  <img src="./store_assets/options-resized.png" alt="Preview of GitHub Dark">
+  <img src="./store_assets/options.png" alt="Preview of Options page">
 </p>
 
 ### Chat Embeds
 
 <p align="center">
-  <img src="./store_assets/chat.png" alt="Preview of GitHub Dark">
+  <img src="./store_assets/chat.png" alt="Preview of Chat">
 </p>
 
 ## Installation
