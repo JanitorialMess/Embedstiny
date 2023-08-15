@@ -1,0 +1,63 @@
+{
+  "manifest_version": 2,
+  "name": "Embedstiny",
+  "version": "0.2.8",
+  "description": "Embeds links in DGG chat",
+  "author": "embedstiny.dev@gmail.com",
+  "permissions": [
+    "storage",
+    "https://*.destiny.gg/*",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "browser_action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/embedstiny-16.png",
+      "32": "assets/embedstiny-32.png",
+      "48": "assets/embedstiny-48.png",
+      "64": "assets/embedstiny-64.png",
+      "96": "assets/embedstiny-96.png",
+      "128": "assets/embedstiny-128.png",
+      "256": "assets/embedstiny-256.png",
+      "512": "assets/embedstiny-512.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "all_frames": true,
+      "matches": [
+        "https://*.destiny.gg/embed/chat*"
+      ],
+      "js": [
+        "browser-polyfill.min.js",
+        "contentScript.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
+    }
+  ],
+  "background": {
+    "scripts": [
+      "browser-polyfill.min.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "icons": {
+    "16": "assets/embedstiny-16.png",
+    "32": "assets/embedstiny-32.png",
+    "48": "assets/embedstiny-48.png",
+    "64": "assets/embedstiny-64.png",
+    "96": "assets/embedstiny-96.png",
+    "128": "assets/embedstiny-128.png",
+    "256": "assets/embedstiny-256.png",
+    "512": "assets/embedstiny-512.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{17e6d99d-e8e2-4224-9b8d-09efb18a2f63}"
+    }
+  }
+}

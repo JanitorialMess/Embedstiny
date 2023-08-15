@@ -1,0 +1,110 @@
+@import "normalize.css";
+
+.carousel {
+  position: relative;
+}
+
+.carousel-item {
+  display: none;
+}
+
+.carousel-item:first-child {
+  display: block;
+}
+
+.carousel .previous,
+.carousel .next {
+  position: absolute;
+  top: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 10px;
+  cursor: pointer;
+  border: none;
+  transform: translateY(-50%);
+}
+
+.carousel .previous {
+  left: 10px;
+}
+
+.carousel .next {
+  right: 10px;
+}
+
+.video-container .video {
+  width: calc(100vw - 16px);
+}
+
+.msg-chat .text .image-container {
+  display: flex;
+  align-items: flex-start;
+}
+
+.msg-chat .text .image-container img,
+.msg-chat .text .image-container iframe,
+.msg-chat .text .video-container video {
+  max-width: 100%;
+  max-height: calc(100vh - 16px);
+  max-height: 350px !important;
+  height: auto;
+  width: auto;
+  object-fit: contain;
+}
+
+.embed-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+}
+
+.embed-container iframe {
+  aspect-ratio: auto;
+  height: auto;
+  width: 100%;
+  min-height: 190px;
+}
+
+.videoIframe-container iframe {
+  max-width: 600px;
+  aspect-ratio: 16/9 !important;
+}
+
+.spotify-container > iframe {
+  max-width: 600px;
+  margin-bottom: -46px !important;
+}
+
+.media-overlay {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  backdrop-filter: blur(32px);
+  display: block;
+}
+
+.blur-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+  font-size: 1.3em;
+  padding: 5px 10px;
+  text-shadow: 2px 4px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.twitter-tweet.twitter-tweet-rendered {
+  margin: 6px 0 6px !important;
+}
+
+.imgurCollection-container > div[id*="mediaContainer"] {
+  margin: -10px 0 -10px 0 !important;
+}

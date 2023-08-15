@@ -1,0 +1,53 @@
+{
+  "name": "embedstiny",
+  "version": "0.2.8",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --env NODE_ENV=production && web-ext build --source-dir dist -a ./artifacts --overwrite-dest",
+    "build:dev": "webpack --env NODE_ENV=development",
+    "build:chrome": "webpack --env NODE_ENV=production --env TARGET_BROWSER=chrome && web-ext build --source-dir dist -a ./artifacts --overwrite-dest -n embedstiny-chrome.zip",
+    "build:edge": "webpack --env NODE_ENV=production && web-ext build --source-dir dist -a ./artifacts --overwrite-dest -n embedstiny-edge.zip",
+    "test": "web-ext run --source-dir dist --start-url https://www.destiny.gg/bigscreen --devtools --bc --reload",
+    "test:firefox": "npm run test",
+    "test:chrome": "npm run test -- --target chromium ",
+    "test:edge": "npm run test -- --target chromium --chromium-binary \"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\"",
+    "lint": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.js",
+    "sign:firefox": "npm run build && dotenv -- web-ext sign --source-dir dist -a ./artifact"
+  },
+  "keywords": [],
+  "author": "JanitorialMess",
+  "description": "",
+  "devDependencies": {
+    "@babel/core": "^7.22.10",
+    "@babel/preset-env": "^7.22.10",
+    "@types/chrome": "^0.0.243",
+    "autoprefixer": "^10.4.14",
+    "babel-loader": "^9.1.3",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "css-minimizer-webpack-plugin": "^5.0.1",
+    "dotenv-cli": "^7.2.1",
+    "dotenv-webpack": "^8.0.1",
+    "eslint": "^8.46.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-import": "^2.28.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "glob": "^10.3.3",
+    "html-webpack-plugin": "^5.5.3",
+    "mini-css-extract-plugin": "^2.7.6",
+    "postcss": "^8.4.27",
+    "postcss-loader": "^7.3.3",
+    "prettier": "^3.0.1",
+    "terser-webpack-plugin": "^5.3.9",
+    "web-ext": "^7.6.2",
+    "webextension-polyfill": "^0.10.0",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  },
+  "dependencies": {
+    "normalize.css": "^8.0.1"
+  }
+}

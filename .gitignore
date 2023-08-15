@@ -1,9 +1,3 @@
-# No src for now
-src
-*.js
-*.json
-.prettierrc
-
 ### dotenv ###
 .env
 

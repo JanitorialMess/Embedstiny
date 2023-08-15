@@ -1,0 +1,242 @@
+@import "normalize.css";
+
+body {
+  background-color: #1a1a1a;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  padding: 12px;
+  width: 300px;
+}
+
+form {
+  margin-top: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  display: flex;
+  align-items: center;
+  font-family: "Roboto", sans-serif;
+  font-weight: 700;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.version-tag {
+  position: relative;
+  font-size: 16px;
+  color: #e7e7e7;
+  top: 8px;
+  display: block;
+  line-height: 1.2;
+}
+
+.update-indicator {
+  margin-top: 10px;
+  display: inline-block;
+  font-size: 14px;
+  color: #f1c40f;
+  font-weight: bold;
+  border: 2px solid #f1c40f;
+  padding: 4px 0 4px 0;
+  border-radius: 5px;
+  text-align: center;
+  vertical-align: middle;
+  width: 100%;
+}
+
+.update-indicator:hover {
+  background-color: #f1c40f;
+  color: #000;
+  cursor: pointer;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+}
+
+sup {
+  top: 0px;
+}
+.supsub {
+  display: inline-block;
+}
+
+h1 > img {
+  padding: 10px;
+  max-width: 100%;
+}
+
+.beta-tag {
+  text-transform: uppercase;
+  font-size: 0.6em;
+  color: #f1c40f;
+  transform: translateX(-12px) translateY(0px) rotate(45deg);
+  animation: glow 1s infinite alternate;
+  position: relative;
+  display: block;
+  line-height: 18px;
+}
+
+.beta-tag:hover {
+  animation:
+    spin 0.6s forwards,
+    glow 1s infinite alternate;
+}
+
+@keyframes spin {
+  0% {
+    transform: translateX(-12px) translateY(0px) rotate(45deg) scale(2);
+  }
+  100% {
+    transform: translateX(-12px) translateY(0px) rotate(405deg) scale(1);
+  }
+}
+
+@keyframes glow {
+  0% {
+    text-shadow:
+      0 0 1px #f1c40f,
+      0 0 2px #f1c40f,
+      0 0 3px #f1c40f,
+      0 0 4px #f1c40f;
+  }
+  50% {
+    text-shadow:
+      0 0 2px #f1c40f,
+      0 0 3px #f1c40f,
+      0 0 4px #f1c40f,
+      0 0 5px #f1c40f;
+  }
+  100% {
+    text-shadow:
+      0 0 3px #f1c40f,
+      0 0 4px #f1c40f,
+      0 0 5px #f1c40f,
+      0 0 6px #f1c40f;
+  }
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 5px;
+  margin-top: 26px;
+  color: #f1c40f;
+}
+
+.checkbox-label {
+  display: block;
+  margin-bottom: 6px;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #555;
+  border-radius: 3px;
+}
+
+input:checked ~ .checkmark {
+  background-color: #f1c40f;
+}
+
+input:disabled ~ .checkmark {
+  background-color: #555;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkmark:after {
+  left: 7px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+.explanation {
+  font-size: 16px;
+  color: #e7e7e7;
+}
+
+.option {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+button {
+  display: inline-block;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #f1c40f;
+}
+
+.kofi-button {
+  display: inline-flex;
+  align-items: center;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.kofi-button img {
+  margin-right: 8px;
+  width: 24px;
+  height: auto;
+}
+
+.kofi-button:hover {
+  background-color: #f1c40f;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
