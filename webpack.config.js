@@ -25,6 +25,14 @@ module.exports = (env) => {
       ],
       styles: "./src/styles.css",
     },
+    resolve: {
+      alias: {
+        svelte: path.resolve("node_modules", "svelte/src/runtime"),
+      },
+      extensions: [".mjs", ".js", ".svelte"],
+      mainFields: ["svelte", "browser", "module", "main"],
+      conditionNames: ["svelte", "browser", "import"],
+    },
     output: {
       path: path.resolve(__dirname, "dist"),
       filename: "[name].js",
@@ -53,6 +61,23 @@ module.exports = (env) => {
     module: {
       rules: [
         {
+          test: /\.svelte$/,
+          include: [
+            path.resolve(__dirname, "src/popup"),
+            path.resolve(__dirname, "src/options"),
+            path.resolve(__dirname, "src/shared"),
+          ],
+          use: {
+            loader: "svelte-loader",
+          },
+        },
+        {
+          test: /node_modules\/svelte\/.*\.mjs$/,
+          resolve: {
+            fullySpecified: false,
+          },
+        },
+        {
           test: /\.js$/,
           exclude: /node_modules/,
           use: {
@@ -61,7 +86,16 @@ module.exports = (env) => {
         },
         {
           test: /\.css$/,
-          use: [MiniCssExtractPlugin.loader, "css-loader", "postcss-loader"],
+          use: [
+            MiniCssExtractPlugin.loader,
+            {
+              loader: "css-loader",
+              options: {
+                esModule: false,
+              },
+            },
+            "postcss-loader",
+          ],
         },
       ],
     },
@@ -86,6 +120,10 @@ module.exports = (env) => {
           {
             from: "node_modules/webextension-polyfill/dist/browser-polyfill.min.js",
             to: "browser-polyfill.min.js",
+          },
+          {
+            from: "node_modules/webextension-polyfill/dist/browser-polyfill.min.js.map",
+            to: "browser-polyfill.min.js.map",
           },
           ...(targetBrowser === "chrome"
             ? [{ from: "manifest.chrome.json", to: "manifest.json" }]

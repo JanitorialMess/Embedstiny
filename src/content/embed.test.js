@@ -21,7 +21,6 @@ function addChatMessage(username, timestamp, urls, nsfw, nsfl) {
   const textElement = document.createElement("span");
   textElement.classList.add("text");
 
-  // Ensure urls is an array
   if (!Array.isArray(urls)) {
     urls = [urls];
   }
@@ -51,84 +50,108 @@ function addChatMessage(username, timestamp, urls, nsfw, nsfl) {
   chatLinesElement.appendChild(chatMessage);
 }
 
-function addChangeMessages() {
-  addChatMessage(
-    "SpotifyManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://open.spotify.com/episode/4NyA9SLlckU7A3A4u6HCQ6",
-  );
-  addChatMessage(
-    "ImgurManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://i.imgur.com/vZY0k6O.jpeg",
-    true,
-  );
-  addChatMessage(
-    "TwitterManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://twitter.com/RealKhalilU/status/1678823464956989440",
-  );
-  addChatMessage(
-    "TwitterManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://twitter.com/StreamerBans/status/1426641460259082242",
-  );
-  addChatMessage(
-    "SteamManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://store.steampowered.com/app/1326470/Sons_Of_The_Forest/",
-  );
-  addChatMessage(
-    "ImgurManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://imgur.com/gallery/xK77p",
-  );
-  addChatMessage(
-    "TwitterDirectManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://pbs.twimg.com/media/F1Qux-cagAACAV0?format=jpg&name=large",
-  );
-  addChatMessage(
-    "StreamableManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://streamable.com/1pasbs",
-  );
-  addChatMessage("YoutubeManiac", "August 2nd 2023, 2:03:04 pm", [
-    // "https://www.youtube.com/watch?v=QH2-TGUlwu4&t=30",
-    // "https://youtu.be/QH2-TGUlwu4?t=30",
-    // "https://www.youtube.com/shorts/Oh8rn0lBVPg?t=6&feature=share",
-    // "https://www.youtube.com/watch?v=moFB-j5iY2E",
-    // "https://www.youtube.com/watch?app=desktop&v=Ep3jK1bZrB8&t=180s",
-    // "https://www.youtube.com/watch?v=rh7oegwCyRk&list=PL8mG-RkN2uTxlfi-dJgSmQsyxh_GU-q11&index=1",
-    // "https://www.youtube.com/embed/QH2-TGUlwu4?start=30",
-    // "https://music.youtube.com/watch?v=UkxRaKZPC4k&si=kHBag1jjA-SgtZIk&t=7",
-    // "https://www.youtube.com/playlist?list=PLFs19LVskfNzQLZkGG_zf6yfYTp_3v_e6",
-  ]);
-  addChatMessage(
-    "RedGIFSManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://www.redgifs.com/watch/elaborateloudzebra",
-  );
-  addChatMessage(
-    "4chanManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    [
-      "https://is2.4chan.org/gif/1691098162315442.webm",
-      "https://is2.4chan.org/gif/1691098162315442.webm",
-      "https://is2.4chan.org/gif/1691098162315442.webm",
-    ],
-    true,
-  );
-  addChatMessage(
-    "ImgurManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://imgur.com/gallery/xK77p",
-  );
-  addChatMessage(
-    "RedditManiac",
-    "August 2nd 2023, 2:03:04 pm",
-    "https://preview.redd.it/fbbccd3xffeb1.gif?width=640&format=mp4&s=bc8e63acf218c30b9f2432286b57909302bcd326",
-  );
-}
+const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
-setTimeout(addChangeMessages, 1000);
+async function sendMessages() {
+  const messages = [
+    {
+      username: "SpotifyManiac",
+      urls: "https://open.spotify.com/episode/4NyA9SLlckU7A3A4u6HCQ6",
+    },
+    {
+      username: "TwitchManiac",
+      urls: [
+        "https://www.twitch.tv/sodapoppin/clip/TrappedAmericanBoarAMPTropPunch",
+        "https://clips.twitch.tv/PlainAdventurousGaurKlappa-pblagZIizB1dpHDW",
+      ],
+    },
+    {
+      username: "ImgurManiac",
+      urls: [
+        "https://i.imgur.com/vZY0k6O.jpeg",
+        "https://imgur.com/gallery/xK77p",
+      ],
+    },
+    {
+      username: "TwitterManiac",
+      urls: [
+        "https://twitter.com/RealKhalilU/status/1678823464956989440",
+        "https://twitter.com/StreamerBans/status/1426641460259082242",
+        "https://pbs.twimg.com/media/F1Qux-cagAACAV0?format=jpg&name=large",
+      ],
+      nsfw: true,
+    },
+    {
+      username: "YouTubeManiac",
+      urls: [
+        "https://www.youtube.com/watch?v=QH2-TGUlwu4",
+        "https://youtu.be/QH2-TGUlwu4?t=30",
+        "https://www.youtube.com/shorts/Oh8rn0lBVPg?t=6&feature=share",
+        "https://www.youtube.com/watch?v=moFB-j5iY2E",
+        "https://www.youtube.com/watch?app=desktop&v=Ep3jK1bZrB8&t=180s",
+        "https://www.youtube.com/watch?v=rh7oegwCyRk&list=PL8mG-RkN2uTxlfi-dJgSmQsyxh_GU-q11&index=1",
+        "https://www.youtube.com/embed/QH2-TGUlwu4?start=30",
+        "https://music.youtube.com/watch?v=UkxRaKZPC4k&si=kHBag1jjA-SgtZIk&t=7",
+        "https://www.youtube.com/playlist?list=PLFs19LVskfNzQLZkGG_zf6yfYTp_3v_e6",
+        "https://www.youtube.com/live/4Vr0yXDodI8?feature=share&t=23939",
+      ],
+    },
+    {
+      username: "SteamManiac",
+      urls: "https://store.steampowered.com/app/1326470/Sons_Of_The_Forest/",
+    },
+    {
+      username: "StreamableManiac",
+      urls: "https://streamable.com/1pasbs",
+    },
+    {
+      username: "RedditManiac",
+      urls: [
+        "https://www.reddit.com/r/aww/comments/15s70jy/meet_barney_hes_been_at_his_shelter_since_he_was/",
+        "https://www.reddit.com/r/nsfw/comments/pbp3oe/bedroom_selfie/",
+        "https://reddit.com/r/truerateme/s/8boHywuOv7",
+        "https://redd.it/123abc",
+      ],
+    },
+    {
+      username: "RedGIFManiac",
+      urls: "https://www.redgifs.com/watch/elaborateloudzebra",
+    },
+    {
+      username: "4chanManiac",
+      urls: ["https://is2.4chan.org/gif/1691098162315442.webm"],
+      nsfw: true,
+    },
+    {
+      username: "StrawpollManiac",
+      urls: "https://strawpoll.com/PbZqRQrxNyN",
+    },
+    {
+      username: "VocarooManiac",
+      urls: "https://vocaroo.com/12TIadaF99nm",
+    },
+    {
+      username: "BunkrrManiac",
+      urls: "https://bunkrr.su/v/aaaa-hoH12wnz.mp4",
+      nsfw: true,
+    },
+    {
+      username: "BunkrrManiac",
+      urls: "https://lol.su/v/aaaa-h.mp4",
+    },
+  ];
+
+  for (let message of messages) {
+    addChatMessage(
+      message.username,
+      new Date().toISOString(),
+      message.urls,
+      message.nsfw,
+    );
+    await timer(1000);
+  }
+}
+(async () => {
+  await timer(1000);
+  await sendMessages();
+})();

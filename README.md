@@ -13,7 +13,7 @@ Embedstiny is a browser extension that allows you to embed links in DGG chat. It
   <a href="https://addons.mozilla.org/en-US/firefox/addon/embedstiny/">
   <img src="https://img.shields.io/amo/v/embedstiny?label=Download%20Firefox&logo=Firefox-Browser&style=for-the-badge" alt="Get Embedstiny for Firefox"></a>
   <br>
-  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.8.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
+  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.3.0.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
  <p align="center"><b>⚠️ Fair warning </b> for Chromium users, the extension will not auto-update. Please check the repo for updates regularly while I am working on a solution
 </p>
 </p>
@@ -24,7 +24,7 @@ Embedstiny is a browser extension that allows you to embed links in DGG chat. It
 - Allows you to disable embeds for specific domains and types of content.
 - Allows you to blur sensitive content.
 - Supports YouTube, Twitter, Spotify, Imgur, Streamable, and more.
-- Compatible with [DGG Chat Everywhere](https://github.com/DannyAlas/DGG-Everywhere)
+- Partially compatible with [DGG Chat Everywhere](https://github.com/DannyAlas/DGG-Everywhere)
 
 ## Previews
 
@@ -56,7 +56,7 @@ Embedstiny is available on the Firefox Add-ons store. Simply click the link belo
 Due to manifest v3 restrictions, Embedstiny is not available on the Chrome Web Store. I am working on a solution, but in the meantime, you can sideload the extension by following the instructions below.
 
 <p>
-  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest" target="_blank"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.2.8.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
+  <a href="https://github.com/JanitorialMess/Embedstiny/releases/latest" target="_blank"><img src="https://img.shields.io/github/downloads/JanitorialMess/Embedstiny/latest/embedstiny-0.3.0.chromium.zip?style=for-the-badge&logo=GoogleChrome&label=DOWNLOAD%20CHROMIUM&color=blue" alt="Get Embedstiny for Chrome"></a>
 </p>
 
 1. [Download latest release](https://github.com/JanitorialMess/Embedstiny/releases/latest) and unzip the archive.
@@ -68,6 +68,9 @@ Due to manifest v3 restrictions, Embedstiny is not available on the Chrome Web S
 
 - `storage` - Required to store user preferences.
 - `https://*.destiny.gg/*` - Required to access the DGG chat page.
+- `https://*.reddit.com/*` - Required to resolve short and embed Reddit links.
+- `https://redd.it/*` - Required to resolve short and embed Reddit links.
+- `https://bunkrr.su/*` - Required to resolve and embed Bunkrr links.
 - `webRequest` | `webRequestBlocking` - Required to slightly relax the Content Security Policy (CSP) of [destiny.gg](destiny.gg) to allow embedding of certain links (e.g. Twitter).
 
 ## Support

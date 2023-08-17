@@ -1,16 +1,19 @@
 import {
   loadImageWithFallback,
-  createEmbed,
-  createMediaWrapper,
+  createMediaOverlay,
+  parseYouTubeUrl,
+  observeIframeInjection,
+  fetchBunkrrMedia,
 } from "../utils/utils.js";
+import { executeFunctionInPage } from "./widgetScriptHandlers.js";
 
-export function createImage(mediaInfo, settings) {
+export function createImage(
+  mediaInfo,
+  mediaContainer,
+  settings,
+  onEmbedCallback,
+) {
   const img = document.createElement("img");
-
-  img.addEventListener("error", function () {
-    console.error(`Failed to load image: ${mediaInfo.url}`);
-    this.remove();
-  });
 
   if (settings.imageOptions.openInNewTab) {
     img.style.cursor = "pointer";
@@ -19,13 +22,58 @@ export function createImage(mediaInfo, settings) {
     });
   }
 
-  loadImageWithFallback(img, mediaInfo.url);
-  return createMediaWrapper(img, mediaInfo.blur);
+  loadImageWithFallback(
+    img,
+    mediaInfo.url,
+    () => {
+      console.log(`Loaded image: ${mediaInfo.url}`);
+      onEmbedCallback();
+    },
+    () => {
+      console.error(`Failed to embed image: ${mediaInfo.url}`);
+      mediaContainer.remove();
+    },
+  );
+
+  if (mediaInfo.blur) {
+    const mediaOverlay = createMediaOverlay(img);
+    return mediaContainer.appendChild(mediaOverlay);
+  }
+
+  return mediaContainer.appendChild(img);
 }
 
-export function createVideo(mediaInfo, settings) {
+function observeVideoLoad(video) {
+  return new Promise((resolve, reject) => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          video.addEventListener("canplaythrough", () => {
+            resolve();
+          });
+
+          video.addEventListener("error", () => {
+            reject(new Error(`Failed to embed video: ${video.src}`));
+          });
+
+          video.src = video.getAttribute("data-src");
+          observer.unobserve(video);
+        }
+      });
+    });
+
+    observer.observe(video);
+  });
+}
+
+export function createVideo(
+  mediaInfo,
+  mediaContainer,
+  settings,
+  onEmbedCallback,
+) {
   const video = document.createElement("video");
-  video.setAttribute("src", mediaInfo.url);
+  video.setAttribute("data-src", mediaInfo.url); // Use data-src attribute to store the video URL
   video.setAttribute("controls", "");
 
   if (settings.videoOptions.preload) {
@@ -42,30 +90,73 @@ export function createVideo(mediaInfo, settings) {
     video.removeAttribute("autoplay");
   }
 
-  video.addEventListener("error", function () {
-    console.error(`Failed to load video: ${mediaInfo.url}`);
-    this.remove();
-  });
+  observeVideoLoad(video)
+    .then(() => {
+      console.log(`Loaded video: ${mediaInfo.url}`);
+      onEmbedCallback();
+    })
+    .catch((error) => {
+      console.error(error.message);
+      mediaContainer.remove();
+    });
 
-  return createMediaWrapper(video, mediaInfo.blur);
+  if (mediaInfo.blur) {
+    const mediaOverlay = createMediaOverlay(video);
+    return mediaContainer.appendChild(mediaOverlay);
+  }
+
+  return mediaContainer.appendChild(video);
 }
 
-export function createVideoIframe(mediaInfo) {
-  const video = document.createElement("iframe");
-  video.setAttribute("src", mediaInfo.url);
-  video.setAttribute("frameborder", "0");
-  video.setAttribute("allowfullscreen", "");
-  video.setAttribute("allow", "autoplay 'none'");
+export function createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback) {
+  const videoIframe = document.createElement("iframe");
+  videoIframe.setAttribute("src", mediaInfo.url);
+  videoIframe.setAttribute("frameborder", "0");
+  videoIframe.setAttribute("allowfullscreen", "");
+  videoIframe.setAttribute("allow", "autoplay 'none'");
 
-  video.addEventListener("error", function () {
-    console.error(`Failed to load video: ${mediaInfo.url}`);
-    this.remove();
+  videoIframe.addEventListener("load", function () {
+    onEmbedCallback();
   });
 
-  return createMediaWrapper(video, mediaInfo.blur);
+  videoIframe.addEventListener("error", function () {
+    mediaContainer.remove();
+    new Error(`Failed to load video: ${mediaInfo.url}`);
+  });
+
+  if (mediaInfo.blur) {
+    const mediaOverlay = createMediaOverlay(videoIframe);
+    return mediaContainer.appendChild(mediaOverlay);
+  }
+
+  return mediaContainer.append(videoIframe);
 }
 
-export function createSpotifyMedia(mediaInfo) {
+export function createGenericIframe(
+  mediaInfo,
+  mediaContainer,
+  onEmbedCallback,
+) {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("src", mediaInfo.url);
+  iframe.classList.add(mediaInfo.id);
+  iframe.setAttribute("frameborder", "0");
+  iframe.setAttribute("allowfullscreen", "");
+  iframe.setAttribute("loading", "lazy");
+
+  iframe.addEventListener("load", function () {
+    onEmbedCallback();
+  });
+
+  iframe.addEventListener("error", () => {
+    mediaContainer.remove();
+    new Error(`Failed to load media: ${mediaInfo.url}`);
+  });
+
+  mediaContainer.appendChild(iframe);
+}
+
+export function createSpotifyMedia(mediaInfo, mediaContainer, onEmbedCallback) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("style", "border-radius: 12px");
   iframe.setAttribute("src", mediaInfo.url);
@@ -73,63 +164,193 @@ export function createSpotifyMedia(mediaInfo) {
   iframe.setAttribute("height", "152");
   iframe.setAttribute("frameborder", "0");
   iframe.setAttribute("allowfullscreen", "");
-  iframe.setAttribute(
-    "allow",
-    "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture",
-  );
   iframe.setAttribute("loading", "lazy");
 
-  return iframe;
+  iframe.addEventListener("load", () => {
+    console.log(`Loaded Spotify media: ${mediaInfo.url}`);
+    onEmbedCallback();
+  });
+
+  iframe.addEventListener("error", () => {
+    mediaContainer.remove();
+    new Error(`Failed to embed Spotify media: ${mediaInfo.url}`);
+  });
+
+  mediaContainer.appendChild(iframe);
 }
 
-export function createTwitchClip(mediaInfo) {
-  const clipId = mediaInfo.split("/").pop();
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://clips.twitch.tv/embed?clip=${clipId}&parent=destiny.gg`;
-  iframe.frameBorder = "0";
-  iframe.allowFullscreen = true;
-  iframe.scrolling = "no";
-  iframe.height = "378";
-  iframe.width = "620";
-  return iframe;
-}
-
-export function createTweet(mediaInfo, mediaContainer) {
+export function createTweet(mediaInfo, mediaContainer, onEmbedCallback) {
+  const tweetId = mediaInfo.url.split("/").pop();
   const uniqueId = `tweet-${Math.random().toString(36).substr(2, 9)}`;
 
-  const embedCallback = function (url, mediaContainerId) {
+  const container = document.createElement("div");
+  container.id = uniqueId;
+  mediaContainer.appendChild(container);
+
+  const fn = (args, requestId) => {
+    const { tweetId, uniqueId } = args;
+    const container = document.getElementById(uniqueId);
+
     // eslint-disable-next-line no-undef
-    twttr.ready(function (twttr) {
-      twttr.widgets.createTweet(
-        url.split("/").pop(),
-        document.getElementById(mediaContainerId),
-      );
+    twttr.ready(() => {
+      // eslint-disable-next-line no-undef
+      twttr.widgets
+        .createTweet(tweetId, container)
+        .then(() => {
+          window.postMessage({ type: "functionResponse", requestId }, "*");
+        })
+        .catch((error) => {
+          console.error("Failed to embed tweet:", error);
+        });
     });
   };
 
-  return createEmbed(mediaInfo.url, uniqueId, mediaContainer, embedCallback);
+  executeFunctionInPage(fn, { tweetId, uniqueId }, onEmbedCallback);
 }
 
-export function createRedditPost(mediaInfo) {
-  const uniqueId = `reddit-${Math.random().toString(36).substr(2, 9)}`;
-  const redditPostUrl = `${mediaInfo.url.replace(/\/$/, "")}/embed`; // Add '/embed' to the Reddit post URL
+export function createYouTubeVideo(mediaInfo, mediaContainer, onEmbedCallback) {
+  const { videoId, timestamp, playlistId } = parseYouTubeUrl(mediaInfo.url);
+  const uniqueId = `youtube-${Math.random().toString(36).substr(2, 9)}`;
 
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("src", redditPostUrl);
-  iframe.setAttribute("width", "100%");
-  iframe.setAttribute("height", "500");
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("scrolling", "no");
-  iframe.setAttribute("title", "Reddit Post Embed");
+  const container = document.createElement("div");
+  container.id = uniqueId;
+  mediaContainer.appendChild(container);
 
-  const div = document.createElement("div");
-  div.id = uniqueId;
-  div.appendChild(iframe);
+  const fn = (args, requestId) => {
+    const { videoId, uniqueId, timestamp, playlistId } = args;
 
-  return div;
+    let playerConfig = {
+      height: "360",
+      width: "640",
+      playerVars: {
+        start: timestamp,
+        enablejsapi: 1,
+        origin: "“https://www.destiny.gg",
+      },
+      events: {
+        // Currently broken because of CORS
+        onReady: () => {
+          window.postMessage({ type: "functionResponse", requestId }, "*");
+        },
+      },
+    };
+
+    if (playlistId) {
+      playerConfig["playerVars"]["list"] = playlistId;
+    } else {
+      playerConfig["videoId"] = videoId;
+    }
+
+    const onYouTubeIframeAPIReady = () => {
+      // eslint-disable-next-line no-undef
+      new YT.Player(uniqueId, playerConfig);
+    };
+
+    if (window.YT && window.YT.Player) {
+      onYouTubeIframeAPIReady();
+    } else {
+      window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    }
+  };
+
+  executeFunctionInPage(
+    fn,
+    { videoId, uniqueId, timestamp, playlistId },
+    onEmbedCallback,
+  );
 }
 
-export function createSteamEmbed(mediaInfo) {
+export function createImgurCollection(
+  mediaInfo,
+  mediaContainer,
+  onEmbedCallback,
+) {
+  const collectionId = mediaInfo.url.split("/").pop();
+
+  const blockquote = document.createElement("blockquote");
+  blockquote.classList.add("imgur-embed-pub");
+  blockquote.setAttribute("lang", "en");
+  blockquote.setAttribute("data-id", `a/${collectionId}`);
+
+  const link = document.createElement("a");
+  link.setAttribute("href", `//imgur.com/a/${collectionId}`);
+  blockquote.appendChild(link);
+
+  mediaContainer.appendChild(blockquote);
+
+  // Only way to reliable make imgur embeds works reliably, general widget script is not working for some reason
+  const script = document.createElement("script");
+  script.setAttribute("async", "");
+  script.setAttribute("src", "//s.imgur.com/min/embed.js");
+  script.setAttribute("charset", "utf-8");
+  document.body.appendChild(script);
+
+  observeIframeInjection(
+    mediaContainer,
+    (iframe) => {
+      iframe.addEventListener("load", () => {
+        console.log(`Imgur collection loaded: ${mediaInfo.url}`);
+        onEmbedCallback();
+      });
+      iframe.addEventListener("error", () => {
+        new Error(`Failed to embed Imgur collection: ${mediaInfo.url}`);
+      });
+    },
+    () => {
+      new Error(
+        `Timeout reached while waiting for Imgur collection to load: ${mediaInfo.url}`,
+      );
+    },
+  );
+}
+
+export function createRedditPost(
+  mediaInfo,
+  mediaContainer,
+  onEmbedCallback,
+  options = {},
+) {
+  const blockquote = document.createElement("blockquote");
+  blockquote.className = "reddit-embed-bq";
+  blockquote.style.height = options.height || "500px";
+  blockquote.setAttribute("data-embed-height", options.height || "500");
+  blockquote.setAttribute("data-embed-showmedia", options.showMedia || "true");
+  blockquote.setAttribute("data-embed-theme", options.theme || "light");
+  blockquote.setAttribute("data-embed-showedits", options.showEdits || "true");
+  blockquote.setAttribute(
+    "data-embed-showusername",
+    options.showUsername || "true",
+  );
+  blockquote.innerHTML = `<a href="${mediaInfo.url}"></a>`;
+  mediaContainer.appendChild(blockquote);
+
+  const script = document.createElement("script");
+  script.setAttribute("async", "");
+  script.setAttribute("src", "https://embed.reddit.com/widgets.js");
+  script.setAttribute("charset", "utf-8");
+  document.body.appendChild(script);
+
+  observeIframeInjection(
+    mediaContainer,
+    (iframe) => {
+      iframe.addEventListener("load", () => {
+        console.log(`Loaded Reddit post: ${mediaInfo.url}`);
+        onEmbedCallback();
+      });
+
+      iframe.addEventListener("error", () => {
+        new Error(`Failed to embed Reddit post: ${mediaInfo.url}`);
+      });
+    },
+    () => {
+      new Error(
+        `Timeout reached while waiting for Reddit post to load: ${mediaInfo.url}`,
+      );
+    },
+  );
+}
+
+export function createSteamEmbed(mediaInfo, mediaContainer, onEmbedCallback) {
   const appId = mediaInfo.url.split("/app/")[1].split("/")[0];
   const iframe = document.createElement("iframe");
   iframe.src = `https://store.steampowered.com/widget/${appId}/`;
@@ -138,34 +359,44 @@ export function createSteamEmbed(mediaInfo) {
   iframe.scrolling = "no";
   iframe.height = "190";
   iframe.width = "646";
-  return iframe;
+
+  iframe.addEventListener("load", function () {
+    onEmbedCallback();
+  });
+  iframe.addEventListener("error", () => {
+    mediaContainer.remove();
+    new Error(`Failed to embed Spotify media: ${mediaInfo.url}`);
+  });
+
+  mediaContainer.appendChild(iframe);
 }
 
-export function createImgurCollection(mediaInfo, mediaContainer) {
-  const uniqueId = `mediaContainer_${Date.now()}`;
+export function createBunkrrMedia(
+  mediaInfo,
+  mediaContainer,
+  settings,
+  onEmbedCallback,
+) {
+  fetchBunkrrMedia(mediaInfo.url)
+    .then((mediaUrl) => {
+      const mediaType = mediaUrl.match(/\.(mp4|webm|ogg)$/i)
+        ? "video"
+        : "image";
 
-  const embedCallback = function (url, mediaContainerId) {
-    const collectionId = url.split("/").pop();
-    const mediaContainer = document.getElementById(mediaContainerId);
-    if (!mediaContainer) return;
-
-    const blockquote = document.createElement("blockquote");
-    blockquote.classList.add("imgur-embed-pub");
-    blockquote.setAttribute("lang", "en");
-    blockquote.setAttribute("data-id", `a/${collectionId}`);
-
-    const link = document.createElement("a");
-    link.setAttribute("href", `//imgur.com/${collectionId}`);
-    blockquote.appendChild(link);
-
-    const script = document.createElement("script");
-    script.setAttribute("async", "");
-    script.setAttribute("src", "//s.imgur.com/min/embed.js");
-    script.setAttribute("charset", "utf-8");
-    blockquote.appendChild(script);
-
-    mediaContainer.appendChild(blockquote);
-  };
-
-  return createEmbed(mediaInfo.url, uniqueId, mediaContainer, embedCallback);
+      mediaInfo = {
+        ...mediaInfo,
+        url: mediaUrl,
+        type: mediaType,
+      };
+      if (mediaType === "image") {
+        createImage(mediaInfo, mediaContainer, settings, onEmbedCallback);
+      } else if (mediaType === "video") {
+        createVideo(mediaInfo, mediaContainer, settings, onEmbedCallback);
+      } else {
+        console.error(`Unsupported media type: ${mediaType}`);
+      }
+    })
+    .catch(() => {
+      new Error(`Failed to embed bunkrr media ${mediaInfo.url}`);
+    });
 }

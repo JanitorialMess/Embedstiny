@@ -1,6 +1,13 @@
 const hosts = [
   // Need to be in order of priority
   {
+    id: "bunkrr",
+    regex:
+      /https?:\/\/bunkrr\.su\/v\/([a-zA-Z0-9-_]+)\.(mp4|webm|ogg)(\?.*)?$/i,
+    mediaType: "bunkrr",
+    transform: (match) => match[0],
+  },
+  {
     id: "redditPreviewVideos",
     regex:
       /https?:\/\/preview\.redd\.it\/.*\?(?:.*&)?format=(mp4|webm|ogg)(?:&.*)?$/i,
@@ -36,7 +43,6 @@ const hosts = [
     regex: /https:\/\/imgur\.com\/(a|gallery)\/([a-zA-Z0-9-_]+)/i,
     mediaType: "imgurCollection",
     transform: (match) => match[0],
-    widgetScript: "//s.imgur.com/min/embed.js",
   },
   {
     id: "imgur",
@@ -51,6 +57,20 @@ const hosts = [
     transform: (match) => `https://streamable.com/e/${match[1]}`,
   },
   {
+    id: "strawpoll",
+    regex:
+      /^(https?:\/\/(?:www\.)?strawpoll\.com\/)([a-zA-Z0-9]+)(?:\/embed)?$/i,
+    mediaType: "genericIframe",
+    transform: (match) => `https://strawpoll.com/embed/${match[2]}`,
+  },
+  {
+    id: "vocaroo",
+    regex:
+      /^(https?:\/\/(?:www\.)?(?:vocaroo\.com\/|voca\.ro\/))(?:embed\/)?([a-zA-Z0-9]+)$/i,
+    mediaType: "genericIframe",
+    transform: (match) => `https://vocaroo.com/embed/${match[2]}`,
+  },
+  {
     id: "redgifs",
     regex: /https:\/\/(?:[a-zA-Z0-9-]+\.)?redgifs\.com\/watch\/(.+)/i,
     mediaType: "videoIframe",
@@ -61,73 +81,76 @@ const hosts = [
     id: "youtube",
     regex:
       /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:music\.)?youtube\.com\/.*|(?:https?:\/\/)?youtu\.be\/.*/i,
+    mediaType: "youtube",
+    transform: (match) => match[0],
+  },
+  {
+    id: "twitchClips",
+    regex:
+      /https:\/\/(?:www\.)?twitch\.tv\/(?:\w+\/)?clip\/([a-zA-Z0-9-_]+)|https:\/\/clips\.twitch\.tv\/([a-zA-Z0-9-_]+)/i,
     mediaType: "videoIframe",
     transform: (match) => {
-      const url = match[0];
-      try {
-        const parsedUrl = new URL(url);
-        const hostname = parsedUrl.hostname;
-        const pathname = parsedUrl.pathname;
-        const searchParams = parsedUrl.searchParams;
+      const iframeHostname = new URL(location.href).hostname;
+      const refererHostname = document.referrer
+        ? new URL(document.referrer).hostname
+        : "";
+      const matchValue = match[1] || match[2];
 
-        let videoId = null;
-        let timestamp = null;
+      const embedUrl = new URL(`https://clips.twitch.tv/embed`);
+      embedUrl.searchParams.set("clip", matchValue);
+      embedUrl.searchParams.set("parent", iframeHostname);
 
-        if (pathname === "/watch" || pathname.startsWith("/shorts/watch")) {
-          videoId = searchParams.get("v");
-          timestamp = searchParams.get("t") || searchParams.get("start");
-        } else if (pathname.startsWith("/shorts/")) {
-          videoId = pathname.slice("/shorts/".length);
-          timestamp = searchParams.get("t");
-        } else if (pathname.startsWith("/embed/")) {
-          videoId = pathname.slice("/embed/".length);
-          timestamp = searchParams.get("start");
-        } else if (pathname.startsWith("/playlist")) {
-          const playlistId = searchParams.get("list");
-          return playlistId
-            ? `https://www.youtube.com/embed/videoseries?list=${playlistId}`
-            : null;
-        }
-
-        if (timestamp && timestamp.includes("s")) {
-          timestamp = timestamp.replace("s", "");
-        }
-
-        if (hostname === "youtu.be" && pathname.startsWith("/")) {
-          videoId = pathname.slice(1);
-        }
-
-        if (!videoId) return null;
-        return `https://www.youtube.com/embed/${videoId}${
-          timestamp ? `?start=${timestamp}` : ""
-        }`;
-      } catch (error) {
-        console.error("Error parsing YouTube URL:", error);
+      if (refererHostname) {
+        embedUrl.searchParams.set("parent", refererHostname);
       }
 
-      return null;
+      return embedUrl.toString();
     },
   },
-  // {
-  //     id: "Twitch Clip",
-  //     regex: /https:\/\/clips\.twitch\.tv\/([a-zA-Z0-9-_]+)/i,
-  //     mediaType: "twitchClip",
-  //     transform: (match) => match[0],
-  // },
   {
     id: "twitter",
     regex: /https?:\/\/twitter\.com\/\w+\/status\/\d+/i,
-    transform: (match) => match[0],
     mediaType: "tweet",
-    widgetScript: "https://platform.twitter.com/widgets.js",
+    transform: (match) => match[0],
   },
-  // {
-  //     id: "Reddit",
-  //     regex: /https?:\/\/(?:www\.)?reddit\.com\/r\/\w+\/comments\/\w+/i,
-  //     mediaType: "reddit",
-  //     transform: (match) => match[0],
-  //     widgetScript: "https://embed.reddit.com/widgets.js",
-  // },
+  {
+    id: "reddit",
+    regex:
+      /https?:\/\/(?:www\.|old\.)?reddit\.com\/r\/[\w]+\/comments\/[\w]+(?:\/[^/]+)?(?:\/[^/]+)?/i,
+    mediaType: "reddit",
+    transform: (match) => match[0],
+  },
+  {
+    id: "reddit",
+    regex:
+      /https?:\/\/(?:www\.|old\.)?reddit\.com\/r\/[\w]+(?:\/[^/]+)?(?:\/[^/]+)?/i,
+    mediaType: "reddit",
+    transform: async (match) => {
+      const url = await resolveShortRedditUrl(match[0], {
+        method: "HEAD",
+      });
+      return url;
+    },
+  },
+  {
+    id: "reddit",
+    regex: /https?:\/\/redd\.it\/([\w]+)/i,
+    mediaType: "reddit",
+    transform: async (match) => {
+      const url = await resolveShortRedditUrl(match[0], {
+        method: "HEAD",
+      });
+      const jsonResponse = await request(
+        `${url}.json`,
+        {
+          method: "GET",
+        },
+        "json",
+      );
+      const permalink = jsonResponse[0].data.children[0].data.permalink;
+      return permalink;
+    },
+  },
   {
     id: "spotify",
     regex:
@@ -138,22 +161,22 @@ const hosts = [
   },
   {
     id: "steam",
-    regex: /https:\/\/store\.steampowered\.com\/app\/(\d+)/i,
+    regex: /https?:\/\/store\.steampowered\.com\/app\/(\d+)/i,
     mediaType: "steam",
     transform: (match) => match[0],
   },
 ];
 
-function loadImage(img, url) {
-  return new Promise((resolve, reject) => {
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
-    img.src = url;
-  });
+function loadImage(img, url, onSuccess, onError) {
+  img.addEventListener("load", () => onSuccess(img));
+  img.addEventListener("error", () =>
+    onError(new Error(`Failed to load image: ${url}`)),
+  );
+  img.src = url;
 }
 
-export function loadImageWithFallback(img, url) {
-  loadImage(img, url).catch(() => {
+export function loadImageWithFallback(img, url, onSuccess, onError) {
+  loadImage(img, url, onSuccess, () => {
     console.warn("Direct loading failed, trying fetch fallback:", url);
 
     fetch(url, {
@@ -166,86 +189,62 @@ export function loadImageWithFallback(img, url) {
       .then((blob) => {
         const objectURL = URL.createObjectURL(blob);
         img.setAttribute("src", objectURL);
+        onSuccess(img);
       })
       .catch((fetchError) => {
-        console.error(`Failed to fetch image: ${url}`, fetchError);
+        onError(fetchError);
       });
   });
 }
 
-export function createEmbed(url, uniqueId, mediaContainer, embedCallback) {
-  // Create the div with the unique ID and append it to the DOM
-  const div = document.createElement("div");
-  div.id = uniqueId;
-  mediaContainer.appendChild(div);
-
-  const scriptContent = `(${embedCallback.toString()})("${url}", "${uniqueId}");`;
-  const injectScript = document.createElement("script");
-  injectScript.textContent = scriptContent;
-  (document.head || document.documentElement).appendChild(injectScript);
-  injectScript.remove();
-
-  return div;
-}
-
-export function createBlurOverlay() {
-  const overlay = document.createElement("div");
-  overlay.classList.add("media-overlay");
+function createBlurOverlay() {
+  const blurOverlay = document.createElement("div");
+  blurOverlay.classList.add("blur-overlay");
 
   const overlayButton = document.createElement("button");
-  overlayButton.textContent = "Click to show";
+  overlayButton.textContent = "Show";
   overlayButton.classList.add("blur-btn");
 
-  overlay.appendChild(overlayButton);
+  const setOrToggleOverlay = (displayValue) => {
+    if (displayValue === undefined) {
+      displayValue = blurOverlay.style.display === "none" ? "block" : "none";
+    }
 
-  return { overlay, overlayButton };
+    blurOverlay.style.display = displayValue;
+    overlayButton.style.display = displayValue;
+  };
+
+  overlayButton.addEventListener("click", setOrToggleOverlay);
+
+  return { blurOverlay, overlayButton, setOrToggleOverlay };
 }
 
-export function createMediaWrapper(mediaElement, blur) {
-  const mediaWrapper = document.createElement("div");
-  mediaWrapper.style.position = "relative";
-  mediaWrapper.appendChild(mediaElement);
+export function createMediaOverlay(mediaElement) {
+  const mediaOverlay = document.createElement("div");
+  mediaOverlay.classList.add("media-overlay");
 
-  if (blur) {
-    const { overlay, overlayButton } = createBlurOverlay();
-    mediaWrapper.appendChild(overlay);
+  const { blurOverlay, overlayButton, setOrToggleOverlay } =
+    createBlurOverlay();
+  mediaOverlay.appendChild(blurOverlay);
+  mediaOverlay.appendChild(overlayButton);
 
-    // Set the dimensions of the overlay to match the media element
-    setInterval(() => {
-      overlay.style.width = `${mediaElement.clientWidth}px`;
-      overlay.style.height = `${mediaElement.clientHeight}px`;
-    }, 100);
+  if (mediaElement.tagName == "VIDEO") {
+    mediaElement.addEventListener("play", () => setOrToggleOverlay("none"));
+    mediaElement.addEventListener("pause", () => setOrToggleOverlay("block"));
 
-    if (mediaElement.tagName == "VIDEO") {
-      mediaElement.addEventListener("play", () => {
-        overlay.style.display = "none";
-      });
-
-      mediaElement.addEventListener("pause", () => {
-        overlay.style.display = "block";
-      });
-
-      overlayButton.addEventListener("click", () => {
-        if (mediaElement.paused) mediaElement.play();
-        else mediaElement.pause();
-      });
-    } else {
-      mediaElement.addEventListener("load", () => {
-        overlay.style.display = "block";
-      });
-
-      mediaElement.addEventListener("error", () => {
-        overlay.style.display = "none";
-      });
-
-      overlayButton.addEventListener("click", () => {
-        overlay.style.display =
-          overlay.style.display === "none" ? "block" : "none";
-      });
-    }
+    mediaOverlay.addEventListener("click", () => {
+      if (mediaElement.paused) mediaElement.play();
+      else mediaElement.pause();
+    });
+  } else {
+    mediaOverlay.addEventListener("click", () => setOrToggleOverlay("none"));
+    mediaElement.addEventListener("error", () => {
+      mediaOverlay.remove();
+    });
   }
 
-  return mediaWrapper;
+  mediaOverlay.appendChild(mediaElement);
+  return mediaOverlay;
 }
 
 export function findHost(url) {
@@ -256,4 +255,161 @@ export function findHost(url) {
     }
   }
   return null;
+}
+
+function parseTimestamp(timestamp) {
+  let seconds = 0;
+  let minutesPattern = /(\d+)m/;
+  let secondsPattern = /(\d+)s/;
+  let numberPattern = /^\d+$/;
+
+  let minutesMatch = timestamp.match(minutesPattern);
+  let secondsMatch = timestamp.match(secondsPattern);
+  let numberMatch = timestamp.match(numberPattern);
+
+  if (minutesMatch) {
+    seconds += parseInt(minutesMatch[1]) * 60;
+  }
+
+  if (secondsMatch) {
+    seconds += parseInt(secondsMatch[1]);
+  }
+
+  if (numberMatch) {
+    seconds = parseInt(numberMatch[0]);
+  }
+
+  return seconds;
+}
+
+export function parseYouTubeUrl(url) {
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname;
+    const pathname = parsedUrl.pathname;
+    const searchParams = parsedUrl.searchParams;
+
+    let videoId = null;
+    let timestamp = null;
+    let playlistId = null;
+
+    if (pathname.startsWith("/playlist")) {
+      playlistId = searchParams.get("list");
+    }
+
+    if (pathname === "/watch" || pathname.startsWith("/shorts/watch")) {
+      videoId = searchParams.get("v");
+      timestamp = searchParams.get("t") || searchParams.get("start");
+    } else if (pathname.startsWith("/shorts/")) {
+      videoId = pathname.slice("/shorts/".length);
+      timestamp = searchParams.get("t");
+    } else if (pathname.startsWith("/embed/")) {
+      videoId = pathname.slice("/embed/".length);
+      timestamp = searchParams.get("start");
+    } else if (pathname.startsWith("/live")) {
+      videoId = pathname.slice("/live/".length);
+      timestamp = searchParams.get("t") || searchParams.get("start");
+    } else if (pathname.startsWith("/playlist")) {
+      playlistId = searchParams.get("list");
+    }
+
+    if (
+      timestamp &&
+      (timestamp.includes("s") ||
+        timestamp.includes("m") ||
+        /^\d+$/.test(timestamp))
+    ) {
+      timestamp = parseTimestamp(timestamp);
+    }
+
+    if (hostname === "youtu.be" && pathname.startsWith("/")) {
+      videoId = pathname.slice(1);
+    }
+
+    return { videoId, timestamp, playlistId };
+  } catch (error) {
+    console.error("Error parsing YouTube URL:", error);
+  }
+
+  return null;
+}
+
+export function observeIframeInjection(
+  element,
+  callback,
+  onError,
+  timeout = 10000,
+) {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+        const iframe = Array.from(mutation.addedNodes).find(
+          (node) => node.tagName === "IFRAME",
+        );
+        if (iframe) {
+          callback(iframe);
+          observer.disconnect();
+        }
+      }
+    });
+  });
+
+  observer.observe(element, { childList: true });
+
+  // Disconnect the observer after the timeout period if no iframe is found
+  setTimeout(() => {
+    observer.disconnect();
+    onError();
+  }, timeout);
+
+  return observer;
+}
+
+async function request(url, options = {}, responseProperty = "text") {
+  try {
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: "requestAction", url, options, responseProperty },
+        (result) => {
+          if (result.error) {
+            reject(new Error(result.error));
+          } else {
+            resolve(result.result);
+          }
+        },
+      );
+    });
+    return response;
+  } catch (error) {
+    console.error(`Error fetching content from ${url}: ${error.message}`);
+    throw error;
+  }
+}
+
+export async function resolveShortRedditUrl(shortUrl, options = {}) {
+  try {
+    const fullUrl = await request(shortUrl, options, "url");
+    return fullUrl;
+  } catch (error) {
+    console.error(`Error resolving short URL ${shortUrl}: ${error.message}`);
+    throw error;
+  }
+}
+
+export async function fetchBunkrrMedia(url) {
+  try {
+    const responseText = await request(url, {}, "text");
+    const mediaUrlRegex =
+      /(?:https?:\/\/(?:cdn|media-files)\d+\.(?:bunkr\.[a-z]+|bunkr\.[a-z]+\.[a-z]+)\/[a-zA-Z0-9-_]+\.(?:jpg|jpeg|png|pnj|gif|webp|mp4|webm|ogg))/i;
+    const match = responseText.match(mediaUrlRegex);
+
+    if (match) {
+      return match[0];
+    } else {
+      throw new Error("Failed to extract media URL");
+    }
+  } catch (error) {
+    console.error(`Error fetching media URL from ${url}: ${error.message}`);
+    throw error;
+  }
 }

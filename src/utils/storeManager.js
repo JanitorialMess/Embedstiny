@@ -1,16 +1,21 @@
-const hosts = {
+export const hosts = {
   generalImages: true,
   generalVideos: true,
   formatQueryImages: true,
   formatQueryVideos: true,
   redditPreviewVideos: true,
   imgurCollections: true,
+  reddit: true,
   imgur: true,
   streamable: true,
   youtube: true,
+  twitchClips: true,
   twitter: true,
+  vocaroo: true,
+  strawpoll: true,
   spotify: true,
   steam: true,
+  bunkrr: false,
   redgifs: false,
 };
 
@@ -39,6 +44,8 @@ export default class StoreManager {
     const settings = {
       initialized: true,
       generalOptions: {
+        hideLinks: true,
+        alwaysScroll: false,
         embedBots: false,
       },
       nsfwOptions: {
@@ -66,6 +73,8 @@ export default class StoreManager {
       await this.updateSettings(settings);
     } else {
       console.log("Settings already initialized.");
+      const mergedSettings = this.deepMerge(settings, storedSettings);
+      await this.updateSettings(mergedSettings);
       this.updateStoredHosts();
     }
   }
@@ -92,11 +101,27 @@ export default class StoreManager {
     });
   }
 
+  deepMerge(target, source) {
+    const output = { ...target };
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        if (
+          typeof source[key] === "object" &&
+          !Array.isArray(source[key]) &&
+          source[key] !== null
+        ) {
+          output[key] = this.deepMerge(target[key] || {}, source[key]);
+        } else {
+          output[key] = source[key];
+        }
+      }
+    }
+    return output;
+  }
+
   async updateSettings(newSettings) {
     const settings = await this.get("settings");
     const updatedSettings = { ...settings, ...newSettings };
-    console.log("Settings:", settings);
-    console.log("Updating settings:", updatedSettings);
     await this.set({ settings: updatedSettings });
   }
 

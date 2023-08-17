@@ -1,12 +1,15 @@
 {
   "manifest_version": 2,
   "name": "Embedstiny",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Embeds links in DGG chat",
   "author": "embedstiny.dev@gmail.com",
   "permissions": [
     "storage",
     "https://*.destiny.gg/*",
+    "https://bunkrr.su/*",
+    "https://*.reddit.com/*",
+    "https://redd.it/*",
     "webRequest",
     "webRequestBlocking"
   ],

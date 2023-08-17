@@ -1,5 +1,5 @@
 export function storeManagerAction(action, params) {
-  console.log(`optionsHelper.js: ${action}`, params);
+  console.log(`StorageManagerAction: ${action}`, params);
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       { type: "storeManagerAction", action, params },
@@ -37,86 +37,6 @@ export function updateBlurCheckboxes(sections) {
         }
       }
     });
-  });
-}
-
-export function createOptions(sections) {
-  sections.forEach((section) => {
-    const container = document.getElementById(section.containerId);
-
-    const sectionElement = document.createElement("div");
-    sectionElement.id = section.id;
-
-    if (section.title) {
-      const title = document.createElement("h2");
-      title.textContent = section.title;
-      sectionElement.appendChild(title);
-    }
-
-    section.options.forEach((option) => {
-      const optionElement = document.createElement("div");
-      optionElement.classList.add("option");
-
-      const label = document.createElement("label");
-      label.classList.add("checkbox-label");
-      label.textContent = option.label;
-
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.id = option.id;
-      if (option.disabled) {
-        input.disabled = true;
-      }
-      label.appendChild(input);
-
-      const checkmark = document.createElement("span");
-      checkmark.classList.add("checkmark");
-      label.appendChild(checkmark);
-
-      optionElement.appendChild(label);
-
-      if (option.nsfw) {
-        const indicator = document.createElement("span");
-        indicator.classList.add("indicator-18plus");
-        indicator.textContent = "18+";
-        label.appendChild(indicator);
-      }
-
-      if (option.info || option.warning) {
-        const infoWrapper = document.createElement("div");
-        infoWrapper.classList.add("info-wrapper");
-
-        if (option.info) {
-          const info = document.createElement("span");
-          info.classList.add("info");
-          info.textContent = option.info;
-          infoWrapper.appendChild(info);
-        }
-
-        if (option.warning) {
-          const warning = document.createElement("div");
-          warning.classList.add("warning");
-
-          const warningIcon = document.createElement("i");
-          warningIcon.classList.add(
-            "material-symbols-outlined",
-            "warning-icon",
-          );
-          warningIcon.textContent = "priority_high";
-          warning.appendChild(warningIcon);
-
-          const warningText = document.createElement("span");
-          warningText.classList.add("warning-text");
-          warningText.textContent = option.warning;
-          warning.appendChild(warningText);
-
-          infoWrapper.appendChild(warning);
-        }
-        optionElement.appendChild(infoWrapper);
-      }
-      sectionElement.appendChild(optionElement);
-    });
-    container.appendChild(sectionElement);
   });
 }
 

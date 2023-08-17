@@ -1,6 +1,10 @@
 module.exports = {
-  extends: ["eslint:recommended", "plugin:prettier/recommended"],
-  plugins: ["prettier"],
+  extends: [
+    "eslint:recommended",
+    "plugin:prettier/recommended",
+    "plugin:jest/recommended",
+  ],
+  plugins: ["prettier", "jest"],
   globals: {
     chrome: "readonly",
   },

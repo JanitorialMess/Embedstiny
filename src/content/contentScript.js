@@ -1,15 +1,17 @@
 import {
   createImage,
   createImgurCollection,
-  createRedditPost,
   createSpotifyMedia,
   createSteamEmbed,
   createTweet,
   createVideo,
   createVideoIframe,
-  createTwitchClip,
+  createGenericIframe,
+  createYouTubeVideo,
+  createBunkrrMedia,
+  createRedditPost,
 } from "./mediaHandlers.js";
-import { loadWidgets } from "./loadWidgets.js";
+import { loadWidgets } from "./widgetScriptHandlers.js";
 import { findHost } from "../utils/utils.js";
 
 (async () => {
@@ -32,152 +34,206 @@ import { findHost } from "../utils/utils.js";
     });
   }
 
-  function embedMedia(mediaContainer, mediaInfo) {
+  function embedMedia(mediaContainer, mediaInfo, onEmbedCallback) {
     mediaContainer.classList.add(`${mediaInfo.type}-container`);
 
     const mediaHandlers = {
-      image: () => createImage(mediaInfo, settings),
-      video: () => createVideo(mediaInfo, settings),
-      videoIframe: () => createVideoIframe(mediaInfo),
-      tweet: () => createTweet(mediaInfo, mediaContainer),
-      imgurCollection: () => createImgurCollection(mediaInfo, mediaContainer),
-      spotify: () => createSpotifyMedia(mediaInfo),
-      reddit: () => createRedditPost(mediaInfo),
-      twitchClip: () => createTwitchClip(mediaInfo),
-      steam: () => createSteamEmbed(mediaInfo),
+      image: () =>
+        createImage(mediaInfo, mediaContainer, settings, onEmbedCallback),
+      video: () =>
+        createVideo(mediaInfo, mediaContainer, settings, onEmbedCallback),
+      videoIframe: () =>
+        createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback),
+      genericIframe: () =>
+        createGenericIframe(mediaInfo, mediaContainer, onEmbedCallback),
+      tweet: () => createTweet(mediaInfo, mediaContainer, onEmbedCallback),
+      imgurCollection: () =>
+        createImgurCollection(mediaInfo, mediaContainer, onEmbedCallback),
+      spotify: () =>
+        createSpotifyMedia(mediaInfo, mediaContainer, onEmbedCallback),
+      youtube: () =>
+        createYouTubeVideo(mediaInfo, mediaContainer, onEmbedCallback),
+      reddit: () =>
+        createRedditPost(mediaInfo, mediaContainer, onEmbedCallback),
+      steam: () => createSteamEmbed(mediaInfo, mediaContainer, onEmbedCallback),
+      bunkrr: () =>
+        createBunkrrMedia(mediaInfo, mediaContainer, settings, onEmbedCallback),
     };
 
     if (mediaHandlers[mediaInfo.type]) {
-      const media = mediaHandlers[mediaInfo.type]();
-      mediaContainer.appendChild(media);
+      mediaHandlers[mediaInfo.type]();
     }
   }
 
-  async function processAddedNode(addedNode) {
-    if (addedNode.className && addedNode.className.includes("msg-chat")) {
-      const user = addedNode.querySelector(".user");
+  async function filterAndTransformLinks(links, messageText) {
+    const transformedUrlsMap = new Map();
+
+    const messageContent = Array.prototype.filter
+      .call(messageText.childNodes, (e) => e.nodeType === Node.TEXT_NODE)
+      .map((e) => e.textContent)
+      .join("");
+
+    for (const link of links) {
+      const url = link.getAttribute("href");
+      const hostInfo = findHost(url);
+
+      if (!hostInfo) continue;
+
+      const { host, match } = hostInfo;
+
+      const isHostEnabled = await storeManagerAction("isHostEnabled", [
+        host.id,
+      ]);
+      if (!isHostEnabled) continue;
+
+      const nsfw =
+        host.nsfw ||
+        link.classList.contains("nsfw-link") ||
+        /nsfw/i.test(messageContent);
+
+      const nsfl =
+        host.nsfl ||
+        link.classList.contains("nsfl-link") ||
+        /nsfl/i.test(messageContent);
 
       if (
-        ((user && user.classList.contains("bot")) ||
-          addedNode.dataset.username === "bot") &&
-        !settings.generalOptions.embedBots
+        (nsfw && !settings.nsfwOptions.embedNsfw) ||
+        (nsfl && !settings.nsflOptions.embedNsfl)
       ) {
-        return;
+        continue;
       }
 
-      const messageText = addedNode.querySelector(".text");
-      if (!messageText) return;
+      const transformedURL = await host.transform(match);
+      if (!transformedURL) continue;
 
-      const links = messageText.querySelectorAll("a.externallink");
-      const embeddedUrls = new Set();
+      if (!transformedUrlsMap.has(transformedURL)) {
+        transformedUrlsMap.set(transformedURL, {
+          originalLinks: [link],
+          host: host,
+          nsfw: nsfw,
+          nsfl: nsfl,
+        });
+      } else {
+        transformedUrlsMap.get(transformedURL).originalLinks.push(link);
+      }
+    }
 
-      for (const link of links) {
-        const url = link.getAttribute("href");
-        const hostInfo = findHost(url);
+    return transformedUrlsMap;
+  }
 
-        if (!hostInfo) return;
+  function createMediaInfo(embedData, transformedURL) {
+    const { host, nsfw, nsfl } = embedData;
 
-        console.log(hostInfo.host, hostInfo.match);
-        const { host, match } = hostInfo;
+    return {
+      id: host.id,
+      url: transformedURL,
+      blur:
+        (nsfl && settings.nsflOptions.blurNsfl) ||
+        (nsfw && settings.nsfwOptions.blurNsfw),
+      type: host.mediaType,
+    };
+  }
 
-        // Check if the host is enabled
-        const isHostEnabled = await storeManagerAction("isHostEnabled", [
-          host.id,
-        ]);
+  function embedTransformedUrls(transformedUrlsMap, messageText) {
+    for (const [transformedURL, embedData] of transformedUrlsMap.entries()) {
+      console.log(`Embedding ${transformedURL}`, embedData);
+      const mediaContainer = document.createElement("div");
+      mediaContainer.classList.add("embed-container");
 
-        console.log(`Host ${host.id} is enabled: ${isHostEnabled}`);
+      messageText.appendChild(mediaContainer);
 
-        if (!isHostEnabled) return;
+      const mediaInfo = createMediaInfo(embedData, transformedURL);
 
-        const nsfw =
-          host.nsfw ||
-          link.classList.contains("nsfw-link") ||
-          /nsfw/i.test(messageText.textContent);
-        const nsfl =
-          host.nsfl ||
-          link.classList.contains("nsfl-link") ||
-          /nsfl/i.test(messageText.textContent);
+      const onEmbedCallback = () => {
+        embedData.originalLinks.forEach((originalLink) => {
+          if (settings.generalOptions.hideLinks) originalLink.remove();
+        });
+        if (!chatPaused) scrollToBottom();
+      };
 
-        if (
-          (nsfw && !settings.nsfwOptions.embedNsfw) ||
-          (nsfl && !settings.nsflOptions.embedNsfl)
-        ) {
-          return;
-        }
-
-        const transformedURL = host.transform(match);
-
-        if (!transformedURL) return;
-
-        // Check if the transformed URL has already been embedded
-        if (!embeddedUrls.has(transformedURL)) {
-          embeddedUrls.add(transformedURL);
-
-          const mediaContainer = document.createElement("div");
-          mediaContainer.classList.add("embed-container");
-          messageText.appendChild(mediaContainer);
-
-          console.log(
-            `Embedding ${host.id} media:`,
-            transformedURL,
-            `with nsfw: ${nsfw} and nsfl: ${nsfl}`,
-          );
-
-          const mediaInfo = {
-            url: transformedURL,
-            blur:
-              (nsfl && settings.nsflOptions.blurNsfl) ||
-              (nsfw && settings.nsfwOptions.blurNsfw),
-            type: host.mediaType,
-          };
-
-          embedMedia(mediaContainer, mediaInfo);
-        }
-
-        link.remove();
+      try {
+        embedMedia(mediaContainer, mediaInfo, onEmbedCallback);
+      } catch (e) {
+        console.error("Error embedding media:", e);
       }
     }
   }
 
-  function scrollToBottom(chatLines) {
+  async function processChatMessage(chatMessage) {
+    const user = chatMessage.querySelector(".user");
+
+    if (
+      ((user && user.classList.contains("bot")) ||
+        chatMessage.dataset.username === "bot") &&
+      !settings.generalOptions.embedBots
+    ) {
+      return;
+    }
+
+    const messageText = chatMessage.querySelector(".text");
+    if (!messageText) return;
+
+    const links = messageText.querySelectorAll("a.externallink");
+    const transformedUrlsMap = await filterAndTransformLinks(
+      links,
+      messageText,
+    );
+    embedTransformedUrls(transformedUrlsMap, messageText);
+    if (!chatPaused) scrollToBottom();
+  }
+
+  function scrollToBottom() {
     chatLines.scrollTop = chatLines.scrollHeight;
   }
 
   const mutationCallback = async function (mutationsList) {
+    chatLines = document.querySelector(".chat-lines");
+    chatScrollNotify = document.querySelector(".chat-scroll-notify");
     const chatOutput = document.querySelector(".chat-output");
-    const chatLines = document.querySelector(".chat-lines");
 
-    if (!chatOutput || !chatLines) return;
+    if (!chatOutput || !chatLines || !chatScrollNotify) return;
 
-    const isScrolledToBottom =
-      chatLines.scrollTop + chatLines.clientHeight >= chatLines.scrollHeight;
+    chatScrollNotify.addEventListener("click", () => {
+      chatPaused = false;
+    });
+
+    setInterval(() => {
+      const chatScrollNotifyOpacity = window
+        .getComputedStyle(chatScrollNotify)
+        .getPropertyValue("opacity");
+      chatPaused = chatScrollNotifyOpacity === "1";
+    }, 500);
 
     for (const mutation of mutationsList) {
       if (mutation.addedNodes.length > 0) {
         for (const addedNode of mutation.addedNodes) {
-          await processAddedNode(addedNode);
+          if (!addedNode.className || !addedNode.className.includes("msg-chat"))
+            continue;
+          await processChatMessage(addedNode, chatLines);
         }
       }
     }
 
-    if (isScrolledToBottom) {
-      let animationFrameTriggered = false;
-      // requestAnimationFrame does not run reliably when the window is not active or visible
-      requestAnimationFrame(() => {
-        scrollToBottom(chatLines);
-        animationFrameTriggered = true;
-      });
-
-      setTimeout(() => {
-        if (!animationFrameTriggered) {
-          scrollToBottom(chatLines);
-        }
-      }, 100);
+    if (settings.generalOptions.alwaysScroll) {
+      scrollToBottom();
     }
   };
 
+  let chatPaused = false;
+  let chatLines, chatScrollNotify;
   let settings = await storeManagerAction("get", ["settings"]);
   loadWidgets();
+
+  // Find which window our extension is running in
+  window.addEventListener("message", (event) => {
+    if (event.data.type === "WIDGET_SCRIPT_LOADED") {
+      console.log(
+        `Loaded ${event.data.scriptUrl} in ${document.location.href}`,
+        window.twttr,
+      );
+    }
+  });
+
   const observer = new MutationObserver(mutationCallback);
   observer.observe(document.body, { childList: true, subtree: true });
 

@@ -7,35 +7,13 @@
       type="application/javascript"
       src="../browser-polyfill.min.js"
     ></script>
+    <link rel="stylesheet" href="options.css" />
     <link
       href="https://fonts.googleapis.com/css?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Two+Tone|Material+Icons+Round|Material+Icons+Sharp|Material+Symbols+Outlined"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <div class="container">
-      <h1>
-        <div class="logo-container">
-          <img src="../assets/embedstiny-128.png" width="128" alt="DGG Icon" />
-          <div class="title-container">
-            <span>Embedstiny</span>
-            <span class="supsub">
-              <sup class="beta-tag">beta</sup>
-              <sub id="installedVersion" class="version-tag"></sub>
-            </span>
-          </div>
-        </div>
-      </h1>
-      <a id="update-link" href="#" target="_blank" hidden>
-        <span class="update-indicator">Update available</span>
-      </a>
-      <form id="optionsForm">
-        <div class="options-container" id="optionsContainer"></div>
-        <h2 class="hosts-header">Supported Hosts</h2>
-        <div class="hosts-container" id="hostsContainer"></div>
-      </form>
-    </div>
     <script type="module" src="options.js"></script>
   </body>
 </html>

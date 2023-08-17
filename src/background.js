@@ -3,8 +3,6 @@ import StoreManager from "./utils/storeManager.js";
 (async () => {
   const storeManager = StoreManager.createProxy();
 
-  console.log(`StoreManager:`, storeManager);
-
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log(
       `Received message from ${
@@ -18,6 +16,23 @@ import StoreManager from "./utils/storeManager.js";
         sendResponse({ success: true, result });
       });
       return true;
+    }
+    if (request.type === "requestAction") {
+      fetch(request.url, request.options)
+        .then((response) => {
+          const responseProperty = request.responseProperty || "text";
+          switch (responseProperty) {
+            case "url":
+              return response.url;
+            case "json":
+              return response.json();
+            default:
+              return response.text();
+          }
+        })
+        .then((result) => sendResponse({ result }))
+        .catch((error) => sendResponse({ error: error.message }));
+      return true; // Required for async sendResponse
     }
   });
 
@@ -71,7 +86,6 @@ import StoreManager from "./utils/storeManager.js";
         this.directives[directive] = new Set();
       }
 
-      // Check if the value contains a wildcard
       const wildcardMatch = value.match(/(https?:\/\/\*)/);
       if (wildcardMatch) {
         const baseDomain = value.replace(wildcardMatch[1], "");
@@ -81,7 +95,7 @@ import StoreManager from "./utils/storeManager.js";
         );
         for (const existingValue of this.directives[directive]) {
           if (regex.test(existingValue)) {
-            return; // Do not add the value if a matching wildcard value already exists
+            return;
           }
         }
       }
@@ -123,16 +137,32 @@ import StoreManager from "./utils/storeManager.js";
           cspParser.addDirectiveValue("default-src", "blob:");
           cspParser.addDirectiveValue("script-src", "'self'");
           cspParser.addDirectiveValue("script-src", "'unsafe-inline'");
+          cspParser.addDirectiveValue("script-src", "*.youtube.com");
           cspParser.addDirectiveValue("script-src", "*.twimg.com");
           cspParser.addDirectiveValue("script-src", "*.twitter.com");
           cspParser.addDirectiveValue("script-src", "*.imgur.com");
           cspParser.addDirectiveValue("script-src", "embed-cdn.spotifycdn.com");
+          cspParser.addDirectiveValue("frame-src", "*.kick.com");
           cspParser.addDirectiveValue("frame-src", "*.twitter.com");
-          cspParser.addDirectiveValue("frame-src", "*.imgur.com");
-          cspParser.addDirectiveValue("frame-src", "https://imgur.com/");
-          cspParser.addDirectiveValue("frame-src", "*.spotify.com");
 
-          // Whitelist all hosts
+          cspParser.addDirectiveValue("frame-src", "https://imgur.com/");
+          cspParser.addDirectiveValue("frame-src", "*.imgur.com");
+
+          cspParser.addDirectiveValue("frame-src", "*.spotify.com");
+          // FIXME:  https://www.youtube.com/s/player/4eae42b1/www-widgetapi.vflset/www-widgetapi.js (“script-src”).
+          cspParser.addDirectiveValue("frame-src", "*.youtube.com");
+          cspParser.addDirectiveValue("frame-src", "*.twitch.tv");
+
+          cspParser.addDirectiveValue("frame-src", "https://streamable.com/");
+          cspParser.addDirectiveValue("frame-src", "*.streamable.com");
+
+          cspParser.addDirectiveValue("frame-src", "https://strawpoll.com/");
+          cspParser.addDirectiveValue("frame-src", "*.strawpoll.com");
+
+          cspParser.addDirectiveValue("frame-src", "https://vocaroo.com");
+          cspParser.addDirectiveValue("frame-src", "*.vocaroo.com");
+          cspParser.addDirectiveValue("frame-src", "*.reddit.com");
+
           cspParser.updateDirectiveValues("img-src", ["*", "data:"]);
           cspParser.updateDirectiveValues("media-src", ["*", "data:"]);
 
@@ -145,7 +175,10 @@ import StoreManager from "./utils/storeManager.js";
       };
     },
     {
-      urls: ["https://*.destiny.gg/*"],
+      urls: [
+        "https://*.destiny.gg/embed/chat*",
+        "https://www.destiny.gg/embed/chat",
+      ],
       types: ["main_frame", "sub_frame"],
     },
     ["blocking", "responseHeaders"],
@@ -153,7 +186,6 @@ import StoreManager from "./utils/storeManager.js";
 
   updateVersionInfo();
 
-  // Update the version info every few hours (e.g., every 4 hours)
   const updateInterval = 4 * 60 * 60 * 1000;
   setInterval(updateVersionInfo, updateInterval);
 })();
