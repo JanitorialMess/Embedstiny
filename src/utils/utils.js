@@ -85,7 +85,7 @@ const hosts = [
   },
   {
     id: "twitter",
-    regex: /https?:\/\/twitter\.com\/\w+\/status\/\d+/i,
+    regex: /https?:\/\/(?:twitter|x)\.com\/\w+\/status\/\d+/i,
     mediaType: "tweet",
     transform: (match) => match[0],
   },
