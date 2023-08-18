@@ -43,27 +43,29 @@ export function createImage(
   return mediaContainer.appendChild(img);
 }
 
-function observeVideoLoad(video) {
-  return new Promise((resolve, reject) => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          video.addEventListener("canplaythrough", () => {
-            resolve();
-          });
+function observeVideoLoad(video, url, onSuccess, onError) {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const tempVideo = document.createElement("video");
+        tempVideo.preload = "metadata";
 
-          video.addEventListener("error", () => {
-            reject(new Error(`Failed to embed video: ${video.src}`));
-          });
+        tempVideo.addEventListener("loadedmetadata", () => {
+          video.src = url;
+          onSuccess();
+        });
 
-          video.src = video.getAttribute("data-src");
-          observer.unobserve(video);
-        }
-      });
+        tempVideo.addEventListener("error", () => {
+          onError(new Error(`Failed to embed video: ${url}`));
+        });
+
+        tempVideo.src = url;
+        observer.unobserve(video);
+      }
     });
-
-    observer.observe(video);
   });
+
+  observer.observe(video);
 }
 
 export function createVideo(
@@ -73,13 +75,12 @@ export function createVideo(
   onEmbedCallback,
 ) {
   const video = document.createElement("video");
-  video.setAttribute("data-src", mediaInfo.url); // Use data-src attribute to store the video URL
   video.setAttribute("controls", "");
 
   if (settings.videoOptions.preload) {
     video.setAttribute("preload", "auto");
   } else {
-    video.setAttribute("preload", "none");
+    video.setAttribute("preload", "metadata");
   }
 
   if (settings.videoOptions.autoplay) {
@@ -90,15 +91,17 @@ export function createVideo(
     video.removeAttribute("autoplay");
   }
 
-  observeVideoLoad(video)
-    .then(() => {
-      console.log(`Loaded video: ${mediaInfo.url}`);
-      onEmbedCallback();
-    })
-    .catch((error) => {
-      console.error(error.message);
-      mediaContainer.remove();
-    });
+  video.addEventListener("loadedmetadata", () => {
+    console.log(`Loaded video: ${mediaInfo.url}`);
+    onEmbedCallback();
+  });
+
+  video.addEventListener("error", () => {
+    console.error(`Failed to embed video: ${mediaInfo.url}`);
+    mediaContainer.remove();
+  });
+
+  video.src = mediaInfo.url;
 
   if (mediaInfo.blur) {
     const mediaOverlay = createMediaOverlay(video);

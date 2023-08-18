@@ -15,30 +15,6 @@ const hosts = [
     transform: (match) => match[0],
   },
   {
-    id: "generalImages",
-    regex: /https?:\/\/.*\.(?:jpg|jpeg|png|pnj|gif|webp)((?:\?|&).*)?$/i,
-    mediaType: "image",
-    transform: (match) => match[0],
-  },
-  {
-    id: "formatQueryImages",
-    regex: /https?:\/\/.*\?format=(jpg|jpeg|png|pnj|gif|webp)((\?|&).*)?$/i,
-    mediaType: "image",
-    transform: (match) => match[0],
-  },
-  {
-    id: "generalVideos",
-    regex: /https?:\/\/.*\.(mp4|webm|ogg)(\?.*)?$/i,
-    mediaType: "video",
-    transform: (match) => match[0],
-  },
-  {
-    id: "formatQueryVideos",
-    regex: /https?:\/\/.*\?(?:.*&)?format=(mp4|webm|ogg)(?:&.*)?$/i,
-    mediaType: "video",
-    transform: (match) => match[0],
-  },
-  {
     id: "imgurCollections",
     regex: /https:\/\/imgur\.com\/(a|gallery)\/([a-zA-Z0-9-_]+)/i,
     mediaType: "imgurCollection",
@@ -152,6 +128,22 @@ const hosts = [
     },
   },
   {
+    id: "reddit",
+    regex: /https?:\/\/(?:www\.|old\.)?reddit\.com\/media(?:\?(.+))?/i,
+    mediaType: "image",
+    transform: (match) => {
+      const paramString = match[1];
+      if (paramString) {
+        const params = new URLSearchParams(paramString);
+        if (params.has("url")) {
+          const decodedUrl = decodeURIComponent(params.get("url"));
+          return decodedUrl;
+        }
+      }
+      return null;
+    },
+  },
+  {
     id: "spotify",
     regex:
       /https?:\/\/open\.spotify\.com\/(track|album|playlist|episode)\/([^?]+)/,
@@ -163,6 +155,30 @@ const hosts = [
     id: "steam",
     regex: /https?:\/\/store\.steampowered\.com\/app\/(\d+)/i,
     mediaType: "steam",
+    transform: (match) => match[0],
+  },
+  {
+    id: "generalImages",
+    regex: /https?:\/\/.*\.(?:jpg|jpeg|png|pnj|gif|webp)((?:\?|&).*)?$/i,
+    mediaType: "image",
+    transform: (match) => match[0],
+  },
+  {
+    id: "formatQueryImages",
+    regex: /https?:\/\/.*\?format=(jpg|jpeg|png|pnj|gif|webp)((\?|&).*)?$/i,
+    mediaType: "image",
+    transform: (match) => match[0],
+  },
+  {
+    id: "generalVideos",
+    regex: /https?:\/\/.*\.(mp4|webm|ogg)(\?.*)?$/i,
+    mediaType: "video",
+    transform: (match) => match[0],
+  },
+  {
+    id: "formatQueryVideos",
+    regex: /https?:\/\/.*\?(?:.*&)?format=(mp4|webm|ogg)(?:&.*)?$/i,
+    mediaType: "video",
     transform: (match) => match[0],
   },
 ];
@@ -188,8 +204,15 @@ export function loadImageWithFallback(img, url, onSuccess, onError) {
       .then((response) => response.blob())
       .then((blob) => {
         const objectURL = URL.createObjectURL(blob);
-        img.setAttribute("src", objectURL);
-        onSuccess(img);
+        const tempImg = new Image();
+        tempImg.addEventListener("load", () => {
+          img.setAttribute("src", objectURL);
+          onSuccess(img);
+        });
+        tempImg.addEventListener("error", () => {
+          onError(new Error(`Failed to load image: ${url}`));
+        });
+        tempImg.src = objectURL;
       })
       .catch((fetchError) => {
         onError(fetchError);

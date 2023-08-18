@@ -40,7 +40,8 @@ export const sections = [
         label: "Preload videos",
         id: "preload",
         info: "Enables preview of videos",
-        warning: "Increases bandwidth usage",
+        warning:
+          "Increases bandwidth usage. When disabled only the metadata is loaded",
       },
       {
         label: "Autoplay videos",

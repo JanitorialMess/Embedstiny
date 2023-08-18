@@ -77,6 +77,7 @@ async function sendMessages() {
       urls: [
         "https://twitter.com/RealKhalilU/status/1678823464956989440",
         "https://twitter.com/StreamerBans/status/1426641460259082242",
+        "https://x.com/StreamerBans/status/1426641460259082242",
         "https://pbs.twimg.com/media/F1Qux-cagAACAV0?format=jpg&name=large",
       ],
       nsfw: true,
@@ -111,6 +112,7 @@ async function sendMessages() {
         "https://www.reddit.com/r/nsfw/comments/pbp3oe/bedroom_selfie/",
         "https://reddit.com/r/truerateme/s/8boHywuOv7",
         "https://redd.it/123abc",
+        "https://www.reddit.com/media?url=https%3A%2F%2Fi.redd.it%2Fl8lrfj8k6rib1.jpg",
       ],
     },
     {
