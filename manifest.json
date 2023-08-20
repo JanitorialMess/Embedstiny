@@ -58,6 +58,9 @@
     "256": "assets/embedstiny-256.png",
     "512": "assets/embedstiny-512.png"
   },
+  "web_accessible_resources": [
+    "shared/changelog/*"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "{17e6d99d-e8e2-4224-9b8d-09efb18a2f63}"

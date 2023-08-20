@@ -1,6 +1,8 @@
 import StoreManager from "./utils/storeManager.js";
 
 (async () => {
+  const repoOwner = "JanitorialMess";
+  const repoName = "Embedstiny";
   const storeManager = StoreManager.createProxy();
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -36,8 +38,13 @@ import StoreManager from "./utils/storeManager.js";
     }
   });
 
-  const repoOwner = "JanitorialMess";
-  const repoName = "Embedstiny";
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === "update" || details.reason === "install") {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL("shared/changelog/changelog.html"),
+      });
+    }
+  });
 
   function updateVersionInfo() {
     fetch(

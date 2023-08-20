@@ -18,6 +18,10 @@ module.exports = (env) => {
         "./src/options/options.css",
       ],
       "popup/popup": ["./src/popup/popup.js", "./src/popup/popup.css"],
+      "shared/changelog/changelog": [
+        "./src/shared/changelog/changelog.js",
+        "./src/shared/changelog/changelog.css",
+      ],
       background: "./src/background.js",
       contentScript: [
         "./src/content/contentScript.js",
@@ -110,6 +114,12 @@ module.exports = (env) => {
         template: "src/popup/popup.html",
         filename: "popup/popup.html",
         chunks: ["popup"],
+        publicPath: "",
+      }),
+      new HtmlWebpackPlugin({
+        template: "src/shared/changelog/changelog.html",
+        filename: "shared/changelog/changelog.html",
+        chunks: ["changelog"],
         publicPath: "",
       }),
       new MiniCssExtractPlugin({
