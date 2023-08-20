@@ -11,7 +11,8 @@ export function createImage(
   mediaInfo,
   mediaContainer,
   settings,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
 ) {
   const img = document.createElement("img");
 
@@ -27,11 +28,12 @@ export function createImage(
     mediaInfo.url,
     () => {
       console.log(`Loaded image: ${mediaInfo.url}`);
-      onEmbedCallback();
+      onEmbedSuccess();
     },
     () => {
       console.error(`Failed to embed image: ${mediaInfo.url}`);
       mediaContainer.remove();
+      onEmbedError();
     },
   );
 
@@ -72,7 +74,8 @@ export function createVideo(
   mediaInfo,
   mediaContainer,
   settings,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
 ) {
   const video = document.createElement("video");
   video.setAttribute("controls", "");
@@ -93,12 +96,13 @@ export function createVideo(
 
   video.addEventListener("loadedmetadata", () => {
     console.log(`Loaded video: ${mediaInfo.url}`);
-    onEmbedCallback();
+    onEmbedSuccess();
   });
 
   video.addEventListener("error", () => {
     console.error(`Failed to embed video: ${mediaInfo.url}`);
     mediaContainer.remove();
+    onEmbedError();
   });
 
   video.src = mediaInfo.url;
@@ -111,7 +115,12 @@ export function createVideo(
   return mediaContainer.appendChild(video);
 }
 
-export function createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback) {
+export function createVideoIframe(
+  mediaInfo,
+  mediaContainer,
+  onEmbedSuccess,
+  onEmbedError,
+) {
   const videoIframe = document.createElement("iframe");
   videoIframe.setAttribute("src", mediaInfo.url);
   videoIframe.setAttribute("frameborder", "0");
@@ -119,12 +128,13 @@ export function createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback) {
   videoIframe.setAttribute("allow", "autoplay 'none'");
 
   videoIframe.addEventListener("load", function () {
-    onEmbedCallback();
+    onEmbedSuccess();
   });
 
   videoIframe.addEventListener("error", function () {
     mediaContainer.remove();
     new Error(`Failed to load video: ${mediaInfo.url}`);
+    onEmbedError();
   });
 
   if (mediaInfo.blur) {
@@ -138,7 +148,8 @@ export function createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback) {
 export function createGenericIframe(
   mediaInfo,
   mediaContainer,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
 ) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("src", mediaInfo.url);
@@ -148,18 +159,24 @@ export function createGenericIframe(
   iframe.setAttribute("loading", "lazy");
 
   iframe.addEventListener("load", function () {
-    onEmbedCallback();
+    onEmbedSuccess();
   });
 
   iframe.addEventListener("error", () => {
     mediaContainer.remove();
     new Error(`Failed to load media: ${mediaInfo.url}`);
+    onEmbedError();
   });
 
   mediaContainer.appendChild(iframe);
 }
 
-export function createSpotifyMedia(mediaInfo, mediaContainer, onEmbedCallback) {
+export function createSpotifyMedia(
+  mediaInfo,
+  mediaContainer,
+  onEmbedSuccess,
+  onEmbedError,
+) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("style", "border-radius: 12px");
   iframe.setAttribute("src", mediaInfo.url);
@@ -171,18 +188,24 @@ export function createSpotifyMedia(mediaInfo, mediaContainer, onEmbedCallback) {
 
   iframe.addEventListener("load", () => {
     console.log(`Loaded Spotify media: ${mediaInfo.url}`);
-    onEmbedCallback();
+    onEmbedSuccess();
   });
 
   iframe.addEventListener("error", () => {
     mediaContainer.remove();
     new Error(`Failed to embed Spotify media: ${mediaInfo.url}`);
+    onEmbedError();
   });
 
   mediaContainer.appendChild(iframe);
 }
 
-export function createTweet(mediaInfo, mediaContainer, onEmbedCallback) {
+export function createTweet(
+  mediaInfo,
+  mediaContainer,
+  onEmbedSuccess,
+  onEmbedError,
+) {
   const tweetId = mediaInfo.url.split("/").pop();
   const uniqueId = `tweet-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -208,10 +231,15 @@ export function createTweet(mediaInfo, mediaContainer, onEmbedCallback) {
     });
   };
 
-  executeFunctionInPage(fn, { tweetId, uniqueId }, onEmbedCallback);
+  executeFunctionInPage(fn, { tweetId, uniqueId }, onEmbedSuccess);
 }
 
-export function createYouTubeVideo(mediaInfo, mediaContainer, onEmbedCallback) {
+export function createYouTubeVideo(
+  mediaInfo,
+  mediaContainer,
+  onEmbedSuccess,
+  onEmbedError,
+) {
   const { videoId, timestamp, playlistId } = parseYouTubeUrl(mediaInfo.url);
   const uniqueId = `youtube-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -259,14 +287,15 @@ export function createYouTubeVideo(mediaInfo, mediaContainer, onEmbedCallback) {
   executeFunctionInPage(
     fn,
     { videoId, uniqueId, timestamp, playlistId },
-    onEmbedCallback,
+    onEmbedSuccess,
   );
 }
 
 export function createImgurCollection(
   mediaInfo,
   mediaContainer,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
 ) {
   const collectionId = mediaInfo.url.split("/").pop();
 
@@ -293,16 +322,18 @@ export function createImgurCollection(
     (iframe) => {
       iframe.addEventListener("load", () => {
         console.log(`Imgur collection loaded: ${mediaInfo.url}`);
-        onEmbedCallback();
+        onEmbedSuccess();
       });
       iframe.addEventListener("error", () => {
         new Error(`Failed to embed Imgur collection: ${mediaInfo.url}`);
       });
+      onEmbedError();
     },
     () => {
       new Error(
         `Timeout reached while waiting for Imgur collection to load: ${mediaInfo.url}`,
       );
+      onEmbedError();
     },
   );
 }
@@ -310,7 +341,8 @@ export function createImgurCollection(
 export function createRedditPost(
   mediaInfo,
   mediaContainer,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
   options = {},
 ) {
   const blockquote = document.createElement("blockquote");
@@ -338,22 +370,29 @@ export function createRedditPost(
     (iframe) => {
       iframe.addEventListener("load", () => {
         console.log(`Loaded Reddit post: ${mediaInfo.url}`);
-        onEmbedCallback();
+        onEmbedSuccess();
       });
 
       iframe.addEventListener("error", () => {
         new Error(`Failed to embed Reddit post: ${mediaInfo.url}`);
+        onEmbedError();
       });
     },
     () => {
       new Error(
         `Timeout reached while waiting for Reddit post to load: ${mediaInfo.url}`,
       );
+      onEmbedError();
     },
   );
 }
 
-export function createSteamEmbed(mediaInfo, mediaContainer, onEmbedCallback) {
+export function createSteamEmbed(
+  mediaInfo,
+  mediaContainer,
+  onEmbedSuccess,
+  onEmbedError,
+) {
   const appId = mediaInfo.url.split("/app/")[1].split("/")[0];
   const iframe = document.createElement("iframe");
   iframe.src = `https://store.steampowered.com/widget/${appId}/`;
@@ -364,11 +403,12 @@ export function createSteamEmbed(mediaInfo, mediaContainer, onEmbedCallback) {
   iframe.width = "646";
 
   iframe.addEventListener("load", function () {
-    onEmbedCallback();
+    onEmbedSuccess();
   });
   iframe.addEventListener("error", () => {
     mediaContainer.remove();
-    new Error(`Failed to embed Spotify media: ${mediaInfo.url}`);
+    console.error(`Failed to embed Spotify media: ${mediaInfo.url}`);
+    onEmbedError();
   });
 
   mediaContainer.appendChild(iframe);
@@ -378,7 +418,8 @@ export function createBunkrrMedia(
   mediaInfo,
   mediaContainer,
   settings,
-  onEmbedCallback,
+  onEmbedSuccess,
+  onEmbedError,
 ) {
   fetchBunkrrMedia(mediaInfo.url)
     .then((mediaUrl) => {
@@ -392,9 +433,21 @@ export function createBunkrrMedia(
         type: mediaType,
       };
       if (mediaType === "image") {
-        createImage(mediaInfo, mediaContainer, settings, onEmbedCallback);
+        createImage(
+          mediaInfo,
+          mediaContainer,
+          settings,
+          onEmbedSuccess,
+          onEmbedError,
+        );
       } else if (mediaType === "video") {
-        createVideo(mediaInfo, mediaContainer, settings, onEmbedCallback);
+        createVideo(
+          mediaInfo,
+          mediaContainer,
+          settings,
+          onEmbedSuccess,
+          onEmbedError,
+        );
       } else {
         console.error(`Unsupported media type: ${mediaType}`);
       }

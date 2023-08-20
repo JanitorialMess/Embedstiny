@@ -34,30 +34,85 @@ import { findHost } from "../utils/utils.js";
     });
   }
 
-  function embedMedia(mediaContainer, mediaInfo, onEmbedCallback) {
+  function embedMedia(mediaContainer, mediaInfo, onEmbedSuccess, onEmbedError) {
     mediaContainer.classList.add(`${mediaInfo.type}-container`);
 
     const mediaHandlers = {
       image: () =>
-        createImage(mediaInfo, mediaContainer, settings, onEmbedCallback),
+        createImage(
+          mediaInfo,
+          mediaContainer,
+          settings,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       video: () =>
-        createVideo(mediaInfo, mediaContainer, settings, onEmbedCallback),
+        createVideo(
+          mediaInfo,
+          mediaContainer,
+          settings,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       videoIframe: () =>
-        createVideoIframe(mediaInfo, mediaContainer, onEmbedCallback),
+        createVideoIframe(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       genericIframe: () =>
-        createGenericIframe(mediaInfo, mediaContainer, onEmbedCallback),
-      tweet: () => createTweet(mediaInfo, mediaContainer, onEmbedCallback),
+        createGenericIframe(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
+      tweet: () =>
+        createTweet(mediaInfo, mediaContainer, onEmbedSuccess, onEmbedError),
       imgurCollection: () =>
-        createImgurCollection(mediaInfo, mediaContainer, onEmbedCallback),
+        createImgurCollection(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       spotify: () =>
-        createSpotifyMedia(mediaInfo, mediaContainer, onEmbedCallback),
+        createSpotifyMedia(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       youtube: () =>
-        createYouTubeVideo(mediaInfo, mediaContainer, onEmbedCallback),
+        createYouTubeVideo(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       reddit: () =>
-        createRedditPost(mediaInfo, mediaContainer, onEmbedCallback),
-      steam: () => createSteamEmbed(mediaInfo, mediaContainer, onEmbedCallback),
+        createRedditPost(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
+      steam: () =>
+        createSteamEmbed(
+          mediaInfo,
+          mediaContainer,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
       bunkrr: () =>
-        createBunkrrMedia(mediaInfo, mediaContainer, settings, onEmbedCallback),
+        createBunkrrMedia(
+          mediaInfo,
+          mediaContainer,
+          settings,
+          onEmbedSuccess,
+          onEmbedError,
+        ),
     };
 
     if (mediaHandlers[mediaInfo.type]) {
@@ -106,6 +161,9 @@ import { findHost } from "../utils/utils.js";
       const transformedURL = await host.transform(match);
       if (!transformedURL) continue;
 
+      // Hide link while it's being processed
+      if (settings.generalOptions.hideLinks) link.style.display = "none";
+
       if (!transformedUrlsMap.has(transformedURL)) {
         transformedUrlsMap.set(transformedURL, {
           originalLinks: [link],
@@ -144,17 +202,25 @@ import { findHost } from "../utils/utils.js";
 
       const mediaInfo = createMediaInfo(embedData, transformedURL);
 
-      const onEmbedCallback = () => {
+      const onEmbedSuccess = () => {
         embedData.originalLinks.forEach((originalLink) => {
           if (settings.generalOptions.hideLinks) originalLink.remove();
         });
         if (!chatPaused) scrollToBottom();
       };
 
+      const onEmbedError = () => {
+        if (settings.generalOptions.hideLinks)
+          embedData.originalLinks.forEach((originalLink) => {
+            originalLink.style.display = "unset";
+          });
+      };
+
       try {
-        embedMedia(mediaContainer, mediaInfo, onEmbedCallback);
+        embedMedia(mediaContainer, mediaInfo, onEmbedSuccess, onEmbedError);
       } catch (e) {
         console.error("Error embedding media:", e);
+        onEmbedError();
       }
     }
   }
