@@ -74,6 +74,8 @@ export default class StoreManager {
     } else {
       console.log("Settings already initialized.");
       const mergedSettings = this.deepMerge(settings, storedSettings);
+      // Override the version number
+      mergedSettings.latestVersion = settings.latestVersion;
       await this.updateSettings(mergedSettings);
       this.updateStoredHosts();
     }

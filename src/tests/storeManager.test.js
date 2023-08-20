@@ -104,7 +104,7 @@ test("initializeSettings should update settings and preserve old user preference
     imageOptions: {
       openInNewTab: true,
     },
-    latestVersion: mockVersion,
+    latestVersion: "1.1.1", // Version bump
     hosts,
   };
 
@@ -122,6 +122,8 @@ test("initializeSettings should update settings and preserve old user preference
         newSettings,
         storedSettings,
       );
+      // Override version number
+      mergedSettings.latestVersion = newSettings.latestVersion;
       await storeManager.updateSettings(mergedSettings);
       storeManager.updateStoredHosts();
     }
@@ -152,7 +154,7 @@ test("initializeSettings should update settings and preserve old user preference
     imageOptions: {
       openInNewTab: true,
     },
-    latestVersion: mockVersion,
+    latestVersion: "1.1.1",
     hosts,
   };
 
