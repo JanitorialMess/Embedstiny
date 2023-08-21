@@ -231,7 +231,10 @@ export function createTweet(
     });
   };
 
-  executeFunctionInPage(fn, { tweetId, uniqueId }, onEmbedSuccess);
+  executeFunctionInPage(fn, { tweetId, uniqueId }, [
+    onEmbedSuccess,
+    onEmbedError,
+  ]);
 }
 
 export function createYouTubeVideo(
@@ -284,11 +287,10 @@ export function createYouTubeVideo(
     }
   };
 
-  executeFunctionInPage(
-    fn,
-    { videoId, uniqueId, timestamp, playlistId },
+  executeFunctionInPage(fn, { videoId, uniqueId, timestamp, playlistId }, [
     onEmbedSuccess,
-  );
+    onEmbedError,
+  ]);
 }
 
 export function createImgurCollection(

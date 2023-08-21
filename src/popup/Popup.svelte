@@ -1,5 +1,5 @@
 <script>
-	import Section from '../shared/Section.svelte';
+  import Section from "../shared/Section.svelte";
   import { onMount } from "svelte";
   import {
     storeManagerAction,
@@ -9,7 +9,7 @@
     registerBetaAudio,
   } from "../utils/optionsHelper.js";
   import { sections } from "./sections.js";
-  import * as styles from './popup.css'
+  import * as styles from "./popup.css";
 
   let popupForm;
   let optionsButton;
@@ -19,7 +19,7 @@
     let settings = await storeManagerAction("get", ["settings"]);
 
     await displayVersionInfo();
-    await applySettings(sections, settings);
+    applySettings(sections, settings);
 
     popupForm.addEventListener("change", async () => {
       const newSettings = getCurrentSettings(sections);
@@ -47,25 +47,25 @@
   Embedstiny
   <span class="supsub">
     <sup class="beta-tag">beta</sup>
-    <sub id="installedVersion" class="version-tag"></sub>
+    <sub id="installedVersion" class="version-tag" />
   </span>
 </h1>
 <a id="update-link" target="_blank" hidden>
   <span class="update-indicator">Update available</span>
 </a>
-<form id="popupForm" bind:this="{popupForm}">
-  <div class="popup-container" id="popupContainer" bind:this="{popupContainer}">
+<form id="popupForm" bind:this={popupForm}>
+  <div class="popup-container" id="popupContainer" bind:this={popupContainer}>
     {#each sections as section}
-      <Section {section}  styles="{styles}" />
+      <Section {section} {styles} />
     {/each}
-</div>
+  </div>
   <p class="explanation">
-    Use these options to enable or disable embedding and blurring of NSFW
-    and NSFL content in DGG chat.
+    Use these options to enable or disable embedding and blurring of NSFW and
+    NSFL content in DGG chat.
   </p>
 </form>
 <div class="button-group">
-  <button id="optionsButton" bind:this="{optionsButton}">Options</button>
+  <button id="optionsButton" bind:this={optionsButton}>Options</button>
   <a href="https://ko-fi.com/Z8Z2NV2H6" target="_blank" class="kofi-button">
     <img
       src="https://storage.ko-fi.com/cdn/cup-border.png"

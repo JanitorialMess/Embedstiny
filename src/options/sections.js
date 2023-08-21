@@ -1,75 +1,9 @@
-export const sections = [
-  {
-    type: "options",
-    title: "NSFW Options",
-    id: "nsfwOptions",
-    options: [
-      {
-        label: "Embed NSFW media",
-        id: "embedNsfw",
-      },
-      {
-        label: "Blur NSFW media (experimental)",
-        id: "blurNsfw",
-        disabled: true,
-      },
-    ],
-  },
-  {
-    type: "options",
-    title: "NSFL Options",
-    id: "nsflOptions",
-    options: [
-      {
-        label: "Embed NSFL media",
-        id: "embedNsfl",
-      },
-      {
-        label: "Blur NSFL media (experimental)",
-        id: "blurNsfl",
-        disabled: true,
-      },
-    ],
-  },
-  {
-    type: "options",
-    title: "Video Options",
-    id: "videoOptions",
-    options: [
-      {
-        label: "Preload videos",
-        id: "preload",
-        info: "Enables preview of videos",
-        warning:
-          "Increases bandwidth usage. When disabled only the metadata is loaded",
-      },
-      {
-        label: "Autoplay videos",
-        id: "autoplay",
-        info: "Autoplays videos",
-        warning:
-          "Increases bandwidth usage and may not work on all browsers (check browser autoplay policies)",
-      },
-    ],
-  },
-  {
-    type: "options",
-    title: "Image Options",
-    id: "imageOptions",
-    options: [
-      {
-        label: "Click to open",
-        id: "openInNewTab",
-        info: "Opens image in new tab when clicked",
-      },
-    ],
-  },
+export const optionSections = [
   {
     type: "options",
     title: "General Options",
     id: "generalOptions",
     options: [
-      // Remove links from chat
       {
         label: "Hide links",
         id: "hideLinks",
@@ -87,6 +21,84 @@ export const sections = [
       },
     ],
   },
+  {
+    type: "optionsGroup",
+    options: [
+      {
+        type: "options",
+        title: "NSFW Options",
+        id: "nsfwOptions",
+        options: [
+          {
+            label: "Embed NSFW media",
+            id: "embedNsfw",
+          },
+          {
+            label: "Blur NSFW media (experimental)",
+            id: "blurNsfw",
+            disabled: true,
+          },
+        ],
+      },
+      {
+        type: "options",
+        title: "NSFL Options",
+        id: "nsflOptions",
+        options: [
+          {
+            label: "Embed NSFL media",
+            id: "embedNsfl",
+          },
+          {
+            label: "Blur NSFL media (experimental)",
+            id: "blurNsfl",
+            disabled: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "optionsGroup",
+    options: [
+      {
+        type: "options",
+        title: "Video Options",
+        id: "videoOptions",
+        options: [
+          {
+            label: "Preload videos",
+            id: "preload",
+            info: "Enables preview of videos",
+            warning:
+              "Increases bandwidth usage. When disabled only the metadata is loaded",
+          },
+          {
+            label: "Autoplay videos",
+            id: "autoplay",
+            info: "Autoplays videos",
+            warning:
+              "Increases bandwidth usage and may not work on all browsers (check browser autoplay policies)",
+          },
+        ],
+      },
+      {
+        type: "options",
+        title: "Image Options",
+        id: "imageOptions",
+        options: [
+          {
+            label: "Click to open",
+            id: "openInNewTab",
+            info: "Opens image in new tab when clicked",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export const hostSections = [
   {
     type: "hosts",
     id: "hosts",
@@ -122,7 +134,34 @@ export const sections = [
         info: "Embeds Imgur galleries and albums",
         warning: "May not resize properly",
       },
-      { label: "Reddit", id: "reddit", info: "Embeds Reddit posts" },
+      {
+        label: "Reddit",
+        id: "reddit",
+        info: "Embeds Reddit posts",
+        // showSubOptions: false,
+        // subOptions: [
+        //   {
+        //     label: "Embed posts",
+        //     id: "embedRedditPosts",
+        //     type: "checkbox",
+        //   },
+        //   {
+        //     label: "Embed videos",
+        //     id: "embedRedditVideos",
+        //     type: "checkbox",
+        //   },
+        //   {
+        //     label: "Max weight",
+        //     id: "maxWeight",
+        //     type: "number",
+        //   },
+        //   {
+        //     label: "Max height",
+        //     id: "maxdHeight",
+        //     type: "number",
+        //   },
+        // ],
+      },
       {
         label: "Imgur",
         id: "imgur",

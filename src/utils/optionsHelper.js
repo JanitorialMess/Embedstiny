@@ -18,28 +18,6 @@ export function storeManagerAction(action, params) {
   });
 }
 
-export function updateBlurCheckboxes(sections) {
-  sections.forEach((section) => {
-    section.options.forEach((option) => {
-      const checkbox = document.getElementById(option.id);
-
-      if (checkbox) {
-        if (option.id.startsWith("embed")) {
-          const blurCheckboxId = option.id.replace("embed", "blur");
-          const blurCheckbox = document.getElementById(blurCheckboxId);
-
-          if (blurCheckbox) {
-            const blurLabel = blurCheckbox.parentElement;
-
-            blurCheckbox.disabled = !checkbox.checked;
-            blurLabel.style.color = checkbox.checked ? "" : "#aaa";
-          }
-        }
-      }
-    });
-  });
-}
-
 export function compareVersions(version1, version2) {
   const v1Parts = version1.split(".").map(Number);
   const v2Parts = version2.split(".").map(Number);
@@ -76,15 +54,57 @@ export async function displayVersionInfo() {
   }
 }
 
+export function updateBlurCheckboxes(sections) {
+  sections.forEach((section) => {
+    section.options.forEach((option) => {
+      if (option.options) {
+        option.options.forEach((subOption) => {
+          updateBlurCheckbox(subOption);
+        });
+      } else {
+        updateBlurCheckbox(option);
+      }
+    });
+  });
+}
+
+function updateBlurCheckbox(option) {
+  const checkbox = document.getElementById(option.id);
+
+  if (checkbox) {
+    if (option.id.startsWith("embed")) {
+      const blurCheckboxId = option.id.replace("embed", "blur");
+      const blurCheckbox = document.getElementById(blurCheckboxId);
+
+      if (blurCheckbox) {
+        const blurLabel = blurCheckbox.parentElement;
+
+        blurCheckbox.disabled = !checkbox.checked;
+        blurLabel.style.color = checkbox.checked ? "" : "#aaa";
+      }
+    }
+  }
+}
+
 export function getCurrentSettings(sections) {
   const settings = {};
 
   sections.forEach((section) => {
-    settings[section.id] = {};
+    if (section.id) settings[section.id] = {};
     section.options.forEach((option) => {
-      const checkbox = document.getElementById(option.id);
-      if (checkbox) {
-        settings[section.id][option.id] = checkbox.checked;
+      if (option.options) {
+        settings[option.id] = {};
+        option.options.forEach((subOption) => {
+          const checkbox = document.getElementById(subOption.id);
+          if (checkbox) {
+            settings[option.id][subOption.id] = checkbox.checked;
+          }
+        });
+      } else {
+        const checkbox = document.getElementById(option.id);
+        if (checkbox) {
+          settings[section.id][option.id] = checkbox.checked;
+        }
       }
     });
   });
@@ -92,21 +112,30 @@ export function getCurrentSettings(sections) {
   return settings;
 }
 
-export async function applySettings(sections, settings) {
+export function applySettings(sections, settings) {
   sections.forEach((section) => {
     section.options.forEach((option) => {
-      const checkbox = document.getElementById(option.id);
-      if (
-        checkbox &&
-        Object.prototype.hasOwnProperty.call(settings, section.id) &&
-        Object.prototype.hasOwnProperty.call(settings[section.id], option.id)
-      ) {
-        checkbox.checked = settings[section.id][option.id];
+      if (option.options) {
+        option.options.forEach((subOption) => {
+          applySetting(subOption, settings[option.id], subOption.id);
+        });
+      } else {
+        applySetting(option, settings[section.id], option.id);
       }
     });
   });
 
   updateBlurCheckboxes(sections);
+}
+
+function applySetting(option, settingsSection, optionId) {
+  const checkbox = document.getElementById(optionId);
+  if (
+    checkbox &&
+    Object.prototype.hasOwnProperty.call(settingsSection, optionId)
+  ) {
+    checkbox.checked = settingsSection[optionId];
+  }
 }
 
 export function registerBetaAudio() {

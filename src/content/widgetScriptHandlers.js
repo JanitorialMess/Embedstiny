@@ -17,7 +17,7 @@ export function loadWidgets() {
   });
 }
 
-export function executeFunctionInPage(fn, args, callback) {
+export function executeFunctionInPage(fn, args, callbacks) {
   const script = document.createElement("script");
   const requestId = `request-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -35,7 +35,7 @@ export function executeFunctionInPage(fn, args, callback) {
 
     window.removeEventListener("message", listener);
     script.remove();
-    callback(event.data.result);
+    callbacks.forEach((callback) => callback(event.data.result));
   });
 
   (document.head || document.documentElement).appendChild(script);
