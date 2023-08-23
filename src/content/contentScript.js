@@ -1,16 +1,4 @@
-import {
-  createImage,
-  createImgurCollection,
-  createSpotifyMedia,
-  createSteamEmbed,
-  createTweet,
-  createVideo,
-  createVideoIframe,
-  createGenericIframe,
-  createYouTubeVideo,
-  createBunkrrMedia,
-  createRedditPost,
-} from "./mediaHandlers.js";
+import MediaFactory from "./mediaHandlers.js";
 import { loadWidgets } from "./widgetScriptHandlers.js";
 import { findHost } from "../utils/utils.js";
 
@@ -34,97 +22,26 @@ import { findHost } from "../utils/utils.js";
     });
   }
 
-  function embedMedia(mediaContainer, mediaInfo, onEmbedSuccess, onEmbedError) {
+  async function embedMedia(mediaContainer, mediaInfo) {
     mediaContainer.classList.add(`${mediaInfo.type}-container`);
 
-    const mediaHandlers = {
-      image: () =>
-        createImage(
-          mediaInfo,
-          mediaContainer,
-          settings,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      video: () =>
-        createVideo(
-          mediaInfo,
-          mediaContainer,
-          settings,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      videoIframe: () =>
-        createVideoIframe(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      genericIframe: () =>
-        createGenericIframe(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      tweet: () =>
-        createTweet(mediaInfo, mediaContainer, onEmbedSuccess, onEmbedError),
-      imgurCollection: () =>
-        createImgurCollection(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      spotify: () =>
-        createSpotifyMedia(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      youtube: () =>
-        createYouTubeVideo(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      reddit: () =>
-        createRedditPost(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      steam: () =>
-        createSteamEmbed(
-          mediaInfo,
-          mediaContainer,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-      bunkrr: () =>
-        createBunkrrMedia(
-          mediaInfo,
-          mediaContainer,
-          settings,
-          onEmbedSuccess,
-          onEmbedError,
-        ),
-    };
+    const mediaFactory = new MediaFactory();
+    const media = mediaFactory.createMedia(mediaInfo, mediaContainer, settings);
 
-    if (mediaHandlers[mediaInfo.type]) {
-      mediaHandlers[mediaInfo.type]();
+    try {
+      await media.embed();
+      return true;
+    } catch (error) {
+      console.error(error);
+      media.undoEmbed();
+      return false;
     }
   }
 
   async function filterAndTransformLinks(links, messageText) {
     const transformedUrlsMap = new Map();
-
-    const messageContent = Array.prototype.filter
-      .call(messageText.childNodes, (e) => e.nodeType === Node.TEXT_NODE)
+    const messageContent = Array.from(messageText.childNodes)
+      .filter((e) => e.nodeType === Node.TEXT_NODE)
       .map((e) => e.textContent)
       .join("");
 
@@ -192,7 +109,7 @@ import { findHost } from "../utils/utils.js";
     };
   }
 
-  function embedTransformedUrls(transformedUrlsMap, messageText) {
+  async function embedTransformedUrls(transformedUrlsMap, messageText) {
     for (const [transformedURL, embedData] of transformedUrlsMap.entries()) {
       console.log(`Embedding ${transformedURL}`, embedData);
       const mediaContainer = document.createElement("div");
@@ -202,50 +119,46 @@ import { findHost } from "../utils/utils.js";
 
       const mediaInfo = createMediaInfo(embedData, transformedURL);
 
-      const onEmbedSuccess = () => {
+      const success = await embedMedia(mediaContainer, mediaInfo);
+      if (success) {
         embedData.originalLinks.forEach((originalLink) => {
           if (settings.generalOptions.hideLinks) originalLink.remove();
         });
         if (!chatPaused) scrollToBottom();
-      };
-
-      const onEmbedError = () => {
+      } else {
         if (settings.generalOptions.hideLinks)
           embedData.originalLinks.forEach((originalLink) => {
             originalLink.style.display = "unset";
           });
-      };
-
-      try {
-        embedMedia(mediaContainer, mediaInfo, onEmbedSuccess, onEmbedError);
-      } catch (e) {
-        console.error("Error embedding media:", e);
-        onEmbedError();
       }
     }
   }
 
   async function processChatMessage(chatMessage) {
     const user = chatMessage.querySelector(".user");
-
     if (
-      ((user && user.classList.contains("bot")) ||
-        chatMessage.dataset.username === "bot") &&
-      !settings.generalOptions.embedBots
+      (user && user.classList.contains("bot")) ||
+      "bot" === chatMessage.dataset.username
     ) {
+      if (!settings.generalOptions.embedBots) {
+        return;
+      }
+    }
+
+    const text = chatMessage.querySelector(".text");
+    if (!text) {
       return;
     }
 
-    const messageText = chatMessage.querySelector(".text");
-    if (!messageText) return;
-
-    const links = messageText.querySelectorAll("a.externallink");
+    const externalLinks = text.querySelectorAll("a.externallink");
     const transformedUrlsMap = await filterAndTransformLinks(
-      links,
-      messageText,
+      externalLinks,
+      text,
     );
-    embedTransformedUrls(transformedUrlsMap, messageText);
-    if (!chatPaused) scrollToBottom();
+    await embedTransformedUrls(transformedUrlsMap, text);
+    if (!chatPaused) {
+      scrollToBottom();
+    }
   }
 
   function scrollToBottom() {
@@ -268,7 +181,7 @@ import { findHost } from "../utils/utils.js";
         .getComputedStyle(chatScrollNotify)
         .getPropertyValue("opacity");
       chatPaused = chatScrollNotifyOpacity === "1";
-    }, 500);
+    }, 1000);
 
     for (const mutation of mutationsList) {
       if (mutation.addedNodes.length > 0) {

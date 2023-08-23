@@ -1,222 +1,240 @@
 import {
-  loadImageWithFallback,
-  createMediaOverlay,
+  request,
+  loadImageWithFetchFallback,
   parseYouTubeUrl,
-  observeIframeInjection,
-  fetchBunkrrMedia,
+  executeFunctionInPage,
 } from "../utils/utils.js";
-import { executeFunctionInPage } from "./widgetScriptHandlers.js";
 
-export function createImage(
-  mediaInfo,
-  mediaContainer,
-  settings,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const img = document.createElement("img");
-
-  if (settings.imageOptions.openInNewTab) {
-    img.style.cursor = "pointer";
-    img.addEventListener("click", function () {
-      window.open(mediaInfo.url, "_blank");
-    });
+class Media {
+  constructor(mediaInfo, container, settings) {
+    this.mediaInfo = mediaInfo;
+    this.container = container;
+    this.settings = settings;
   }
 
-  loadImageWithFallback(
-    img,
-    mediaInfo.url,
-    () => {
-      console.log(`Loaded image: ${mediaInfo.url}`);
-      onEmbedSuccess();
-    },
-    () => {
-      console.error(`Failed to embed image: ${mediaInfo.url}`);
-      mediaContainer.remove();
-      onEmbedError();
-    },
-  );
-
-  if (mediaInfo.blur) {
-    const mediaOverlay = createMediaOverlay(img);
-    return mediaContainer.appendChild(mediaOverlay);
+  createMediaElement() {
+    throw new Error("createMediaElement() must be implemented in subclasses");
   }
 
-  return mediaContainer.appendChild(img);
-}
+  createBlurOverlay() {
+    const blurOverlay = document.createElement("div");
+    blurOverlay.classList.add("blur-overlay");
 
-function observeVideoLoad(video, url, onSuccess, onError) {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const tempVideo = document.createElement("video");
-        tempVideo.preload = "metadata";
+    const overlayButton = document.createElement("button");
+    overlayButton.textContent = "Show";
+    overlayButton.classList.add("blur-btn");
 
-        tempVideo.addEventListener("loadedmetadata", () => {
-          video.src = url;
-          onSuccess();
-        });
-
-        tempVideo.addEventListener("error", () => {
-          onError(new Error(`Failed to embed video: ${url}`));
-        });
-
-        tempVideo.src = url;
-        observer.unobserve(video);
+    const setOrToggleOverlay = (displayValue) => {
+      if (displayValue === undefined) {
+        displayValue = blurOverlay.style.display === "none" ? "block" : "none";
       }
+
+      blurOverlay.style.display = displayValue;
+      overlayButton.style.display = displayValue;
+    };
+
+    overlayButton.addEventListener("click", setOrToggleOverlay);
+
+    return { blurOverlay, overlayButton, setOrToggleOverlay };
+  }
+
+  createMediaOverlay(mediaElement) {
+    const mediaOverlay = document.createElement("div");
+    mediaOverlay.classList.add("media-overlay");
+
+    const { blurOverlay, overlayButton, setOrToggleOverlay } =
+      this.createBlurOverlay();
+    mediaOverlay.appendChild(blurOverlay);
+    mediaOverlay.appendChild(overlayButton);
+
+    if (mediaElement.tagName == "VIDEO") {
+      mediaElement.addEventListener("play", () => setOrToggleOverlay("none"));
+      mediaElement.addEventListener("pause", () => setOrToggleOverlay("block"));
+
+      mediaOverlay.addEventListener("click", () => {
+        if (mediaElement.paused) mediaElement.play();
+        else mediaElement.pause();
+      });
+    } else {
+      mediaOverlay.addEventListener("click", () => setOrToggleOverlay("none"));
+      mediaElement.addEventListener("error", () => {
+        mediaOverlay.remove();
+      });
+    }
+
+    mediaOverlay.appendChild(mediaElement);
+    return mediaOverlay;
+  }
+
+  createContainer(prefix) {
+    const uniqueId = `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
+    const container = document.createElement("div");
+    container.id = uniqueId;
+    return container;
+  }
+
+  createBlockquote(attributes, href) {
+    const blockquote = document.createElement("blockquote");
+    Object.entries(attributes).forEach(([key, value]) => {
+      blockquote.setAttribute(key, value);
     });
-  });
-
-  observer.observe(video);
-}
-
-export function createVideo(
-  mediaInfo,
-  mediaContainer,
-  settings,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const video = document.createElement("video");
-  video.setAttribute("controls", "");
-
-  if (settings.videoOptions.preload) {
-    video.setAttribute("preload", "auto");
-  } else {
-    video.setAttribute("preload", "metadata");
+    if (href) {
+      const link = document.createElement("a");
+      link.setAttribute("href", href);
+      blockquote.appendChild(link);
+    }
+    return blockquote;
   }
 
-  if (settings.videoOptions.autoplay) {
-    video.setAttribute("autoplay", "");
-    video.setAttribute("muted", "");
-    video.setAttribute("playsinline", "");
-  } else {
-    video.removeAttribute("autoplay");
+  addScriptToBody(src) {
+    const script = document.createElement("script");
+    script.setAttribute("async", "");
+    script.setAttribute("src", src);
+    script.setAttribute("charset", "utf-8");
+    document.body.appendChild(script);
   }
 
-  video.addEventListener("loadedmetadata", () => {
-    console.log(`Loaded video: ${mediaInfo.url}`);
-    onEmbedSuccess();
-  });
+  observeIframeInjection(element, timeout = 10000) {
+    return new Promise((resolve, reject) => {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+            const iframe = Array.from(mutation.addedNodes).find(
+              (node) => node.tagName === "IFRAME",
+            );
+            if (iframe) {
+              resolve(iframe);
+              observer.disconnect();
+            }
+          }
+        });
+      });
 
-  video.addEventListener("error", () => {
-    console.error(`Failed to embed video: ${mediaInfo.url}`);
-    mediaContainer.remove();
-    onEmbedError();
-  });
+      observer.observe(element, { childList: true });
 
-  video.src = mediaInfo.url;
-
-  if (mediaInfo.blur) {
-    const mediaOverlay = createMediaOverlay(video);
-    return mediaContainer.appendChild(mediaOverlay);
+      setTimeout(() => {
+        observer.disconnect();
+        reject(
+          new Error(
+            "Timeout reached while waiting for Imgur collection to load",
+          ),
+        );
+      }, timeout);
+    });
   }
 
-  return mediaContainer.appendChild(video);
-}
-
-export function createVideoIframe(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const videoIframe = document.createElement("iframe");
-  videoIframe.setAttribute("src", mediaInfo.url);
-  videoIframe.setAttribute("frameborder", "0");
-  videoIframe.setAttribute("allowfullscreen", "");
-  videoIframe.setAttribute("allow", "autoplay 'none'");
-
-  videoIframe.addEventListener("load", function () {
-    onEmbedSuccess();
-  });
-
-  videoIframe.addEventListener("error", function () {
-    mediaContainer.remove();
-    new Error(`Failed to load video: ${mediaInfo.url}`);
-    onEmbedError();
-  });
-
-  if (mediaInfo.blur) {
-    const mediaOverlay = createMediaOverlay(videoIframe);
-    return mediaContainer.appendChild(mediaOverlay);
+  embed() {
+    const mediaElement = this.createMediaElement();
+    this.container.appendChild(mediaElement);
   }
 
-  return mediaContainer.append(videoIframe);
+  undoEmbed() {
+    this.container.remove();
+  }
 }
 
-export function createGenericIframe(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("src", mediaInfo.url);
-  iframe.classList.add(mediaInfo.id);
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("allowfullscreen", "");
-  iframe.setAttribute("loading", "lazy");
+class ImageMedia extends Media {
+  async createMediaElement() {
+    const img = document.createElement("img");
 
-  iframe.addEventListener("load", function () {
-    onEmbedSuccess();
-  });
+    if (this.settings.imageOptions.openInNewTab) {
+      img.style.cursor = "pointer";
+      img.addEventListener("click", function () {
+        window.open(this.mediaInfo.url, "_blank");
+      });
+    }
 
-  iframe.addEventListener("error", () => {
-    mediaContainer.remove();
-    new Error(`Failed to load media: ${mediaInfo.url}`);
-    onEmbedError();
-  });
+    try {
+      await loadImageWithFetchFallback(img, this.mediaInfo.url);
+      console.log(`Loaded image: ${this.mediaInfo.url}`);
+    } catch (error) {
+      console.error(`Failed to embed image: ${this.mediaInfo.url}`);
+      this.container.remove();
+      throw error;
+    }
 
-  mediaContainer.appendChild(iframe);
+    if (this.mediaInfo.blur) {
+      const mediaOverlay = this.createMediaOverlay(img);
+      return mediaOverlay;
+    }
+
+    return img;
+  }
+
+  async embed() {
+    const mediaElement = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+  }
 }
 
-export function createSpotifyMedia(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("style", "border-radius: 12px");
-  iframe.setAttribute("src", mediaInfo.url);
-  iframe.setAttribute("width", "100%");
-  iframe.setAttribute("height", "152");
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("allowfullscreen", "");
-  iframe.setAttribute("loading", "lazy");
+class VideoMedia extends Media {
+  createMediaElement() {
+    let mediaElement;
+    const video = document.createElement("video");
+    video.setAttribute("controls", "");
 
-  iframe.addEventListener("load", () => {
-    console.log(`Loaded Spotify media: ${mediaInfo.url}`);
-    onEmbedSuccess();
-  });
+    if (this.settings.videoOptions.preload) {
+      video.setAttribute("preload", "auto");
+    } else {
+      video.setAttribute("preload", "metadata");
+    }
 
-  iframe.addEventListener("error", () => {
-    mediaContainer.remove();
-    new Error(`Failed to embed Spotify media: ${mediaInfo.url}`);
-    onEmbedError();
-  });
+    if (this.settings.videoOptions.autoplay) {
+      video.setAttribute("autoplay", "");
+      video.setAttribute("muted", "");
+      video.setAttribute("playsinline", "");
+    } else {
+      video.removeAttribute("autoplay");
+    }
 
-  mediaContainer.appendChild(iframe);
+    video.src = this.mediaInfo.url;
+
+    if (this.mediaInfo.blur) {
+      mediaElement = this.createMediaOverlay(video);
+    } else {
+      mediaElement = video;
+    }
+
+    return new Promise((resolve, reject) => {
+      video.addEventListener("loadedmetadata", () => {
+        console.log(`Loaded video: ${this.mediaInfo.url}`);
+        resolve(mediaElement);
+      });
+
+      video.addEventListener("error", () => {
+        reject(new Error(`Failed to embed video: ${this.mediaInfo.url}`));
+      });
+    });
+  }
+
+  async embed() {
+    const mediaElement = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+  }
 }
+class TweetMedia extends Media {
+  async createMediaElement() {
+    const tweetId = this.mediaInfo.url.split("/").pop();
+    const mediaElement = this.createContainer("tweet");
 
-export function createTweet(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const tweetId = mediaInfo.url.split("/").pop();
-  const uniqueId = `tweet-${Math.random().toString(36).substr(2, 9)}`;
+    this.addScriptToBody("https://platform.twitter.com/widgets.js");
 
-  const container = document.createElement("div");
-  container.id = uniqueId;
-  mediaContainer.appendChild(container);
+    const embedTweet = async () => {
+      await executeFunctionInPage(this.createTweetInPage, {
+        tweetId,
+        uniqueId: mediaElement.id,
+      });
+    };
 
-  const fn = (args, requestId) => {
+    return { mediaElement, embedTweet };
+  }
+
+  createTweetInPage(args, requestId) {
     const { tweetId, uniqueId } = args;
     const container = document.getElementById(uniqueId);
 
+    // eslint-disable-next-line no-undef
+    if (!twttr) return;
     // eslint-disable-next-line no-undef
     twttr.ready(() => {
       // eslint-disable-next-line no-undef
@@ -229,28 +247,35 @@ export function createTweet(
           console.error("Failed to embed tweet:", error);
         });
     });
-  };
+  }
 
-  executeFunctionInPage(fn, { tweetId, uniqueId }, [
-    onEmbedSuccess,
-    onEmbedError,
-  ]);
+  async embed() {
+    const { mediaElement, embedTweet } = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+    await embedTweet();
+  }
 }
 
-export function createYouTubeVideo(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const { videoId, timestamp, playlistId } = parseYouTubeUrl(mediaInfo.url);
-  const uniqueId = `youtube-${Math.random().toString(36).substr(2, 9)}`;
+class YouTubeMedia extends Media {
+  async createMediaElement() {
+    const { videoId, timestamp, playlistId } = parseYouTubeUrl(
+      this.mediaInfo.url,
+    );
+    const mediaElement = this.createContainer("youtube");
 
-  const container = document.createElement("div");
-  container.id = uniqueId;
-  mediaContainer.appendChild(container);
+    const embedYouTube = async () => {
+      await executeFunctionInPage(this.createYouTubeVideoInPage, {
+        videoId,
+        uniqueId: mediaElement.id,
+        timestamp,
+        playlistId,
+      });
+    };
 
-  const fn = (args, requestId) => {
+    return { mediaElement, embedYouTube };
+  }
+
+  createYouTubeVideoInPage(args, requestId) {
     const { videoId, uniqueId, timestamp, playlistId } = args;
 
     let playerConfig = {
@@ -259,10 +284,9 @@ export function createYouTubeVideo(
       playerVars: {
         start: timestamp,
         enablejsapi: 1,
-        origin: "“https://www.destiny.gg",
+        origin: "https://www.destiny.gg",
       },
       events: {
-        // Currently broken because of CORS
         onReady: () => {
           window.postMessage({ type: "functionResponse", requestId }, "*");
         },
@@ -285,176 +309,277 @@ export function createYouTubeVideo(
     } else {
       window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     }
-  };
+  }
 
-  executeFunctionInPage(fn, { videoId, uniqueId, timestamp, playlistId }, [
-    onEmbedSuccess,
-    onEmbedError,
-  ]);
+  async embed() {
+    const { mediaElement, embedYouTube } = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+    await embedYouTube();
+  }
 }
 
-export function createImgurCollection(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const collectionId = mediaInfo.url.split("/").pop();
+class ImgurMedia extends Media {
+  async createMediaElement() {
+    const collectionId = this.mediaInfo.url.split("/").pop();
+    const blockquote = this.createBlockquote(
+      {
+        class: "imgur-embed-pub",
+        lang: "en",
+        "data-id": `a/${collectionId}`,
+      },
+      `//imgur.com/a/${collectionId}`,
+    );
 
-  const blockquote = document.createElement("blockquote");
-  blockquote.classList.add("imgur-embed-pub");
-  blockquote.setAttribute("lang", "en");
-  blockquote.setAttribute("data-id", `a/${collectionId}`);
+    this.addScriptToBody("//s.imgur.com/min/embed.js");
+    this.container.appendChild(blockquote);
 
-  const link = document.createElement("a");
-  link.setAttribute("href", `//imgur.com/a/${collectionId}`);
-  blockquote.appendChild(link);
+    const iframe = await this.observeIframeInjection(this.container);
+    return iframe;
+  }
 
-  mediaContainer.appendChild(blockquote);
-
-  // Only way to reliable make imgur embeds works reliably, general widget script is not working for some reason
-  const script = document.createElement("script");
-  script.setAttribute("async", "");
-  script.setAttribute("src", "//s.imgur.com/min/embed.js");
-  script.setAttribute("charset", "utf-8");
-  document.body.appendChild(script);
-
-  observeIframeInjection(
-    mediaContainer,
-    (iframe) => {
-      iframe.addEventListener("load", () => {
-        console.log(`Imgur collection loaded: ${mediaInfo.url}`);
-        onEmbedSuccess();
-      });
-      iframe.addEventListener("error", () => {
-        new Error(`Failed to embed Imgur collection: ${mediaInfo.url}`);
-      });
-      onEmbedError();
-    },
-    () => {
-      new Error(
-        `Timeout reached while waiting for Imgur collection to load: ${mediaInfo.url}`,
-      );
-      onEmbedError();
-    },
-  );
+  async embed() {
+    const mediaElement = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+  }
 }
 
-export function createRedditPost(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-  options = {},
-) {
-  const blockquote = document.createElement("blockquote");
-  blockquote.className = "reddit-embed-bq";
-  blockquote.style.height = options.height || "500px";
-  blockquote.setAttribute("data-embed-height", options.height || "500");
-  blockquote.setAttribute("data-embed-showmedia", options.showMedia || "true");
-  blockquote.setAttribute("data-embed-theme", options.theme || "light");
-  blockquote.setAttribute("data-embed-showedits", options.showEdits || "true");
-  blockquote.setAttribute(
-    "data-embed-showusername",
-    options.showUsername || "true",
-  );
-  blockquote.innerHTML = `<a href="${mediaInfo.url}"></a>`;
-  mediaContainer.appendChild(blockquote);
+class RedditMedia extends Media {
+  async createMediaElement(options = {}) {
+    const blockquote = this.createBlockquote(
+      {
+        class: "reddit-embed-bq",
+        "data-embed-height": options.height || "500",
+        "data-embed-showmedia": options.showMedia || "true",
+        "data-embed-theme": options.theme || "light",
+        "data-embed-showedits": options.showEdits || "true",
+        "data-embed-showusername": options.showUsername || "true",
+      },
+      this.mediaInfo.url,
+    );
 
-  const script = document.createElement("script");
-  script.setAttribute("async", "");
-  script.setAttribute("src", "https://embed.reddit.com/widgets.js");
-  script.setAttribute("charset", "utf-8");
-  document.body.appendChild(script);
+    this.addScriptToBody("https://embed.reddit.com/widgets.js");
+    this.container.appendChild(blockquote);
 
-  observeIframeInjection(
-    mediaContainer,
-    (iframe) => {
-      iframe.addEventListener("load", () => {
-        console.log(`Loaded Reddit post: ${mediaInfo.url}`);
-        onEmbedSuccess();
-      });
+    const iframe = await this.observeIframeInjection(this.container);
+    return iframe;
+  }
 
-      iframe.addEventListener("error", () => {
-        new Error(`Failed to embed Reddit post: ${mediaInfo.url}`);
-        onEmbedError();
-      });
-    },
-    () => {
-      new Error(
-        `Timeout reached while waiting for Reddit post to load: ${mediaInfo.url}`,
-      );
-      onEmbedError();
-    },
-  );
+  async embed(options) {
+    const mediaElement = await this.createMediaElement(options);
+    this.container.appendChild(mediaElement);
+  }
 }
 
-export function createSteamEmbed(
-  mediaInfo,
-  mediaContainer,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  const appId = mediaInfo.url.split("/app/")[1].split("/")[0];
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://store.steampowered.com/widget/${appId}/`;
-  iframe.frameBorder = "0";
-  iframe.allowFullscreen = true;
-  iframe.scrolling = "no";
-  iframe.height = "190";
-  iframe.width = "646";
-
-  iframe.addEventListener("load", function () {
-    onEmbedSuccess();
-  });
-  iframe.addEventListener("error", () => {
-    mediaContainer.remove();
-    console.error(`Failed to embed Spotify media: ${mediaInfo.url}`);
-    onEmbedError();
-  });
-
-  mediaContainer.appendChild(iframe);
-}
-
-export function createBunkrrMedia(
-  mediaInfo,
-  mediaContainer,
-  settings,
-  onEmbedSuccess,
-  onEmbedError,
-) {
-  fetchBunkrrMedia(mediaInfo.url)
-    .then((mediaUrl) => {
+class BunkrrMedia extends Media {
+  async createMediaElement() {
+    try {
+      const mediaUrl = await this.fetchBunkrrMedia(this.mediaInfo.url);
       const mediaType = mediaUrl.match(/\.(mp4|webm|ogg)$/i)
         ? "video"
         : "image";
 
-      mediaInfo = {
-        ...mediaInfo,
+      this.mediaInfo = {
+        ...this.mediaInfo,
         url: mediaUrl,
         type: mediaType,
       };
+
+      let mediaElement;
       if (mediaType === "image") {
-        createImage(
-          mediaInfo,
-          mediaContainer,
-          settings,
-          onEmbedSuccess,
-          onEmbedError,
-        );
+        mediaElement = this.createImageElement();
       } else if (mediaType === "video") {
-        createVideo(
-          mediaInfo,
-          mediaContainer,
-          settings,
-          onEmbedSuccess,
-          onEmbedError,
-        );
+        mediaElement = this.createVideoElement();
       } else {
-        console.error(`Unsupported media type: ${mediaType}`);
+        throw new Error(`Unsupported media type: ${mediaType}`);
       }
-    })
-    .catch(() => {
-      new Error(`Failed to embed bunkrr media ${mediaInfo.url}`);
+
+      if (this.mediaInfo.blur) {
+        mediaElement = this.createMediaOverlay(mediaElement);
+      }
+
+      return mediaElement;
+    } catch (error) {
+      console.error(
+        `Error fetching media URL from ${this.mediaInfo.url}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async fetchBunkrrMedia(url) {
+    try {
+      const responseText = await request(url, {}, "text");
+      const mediaUrlRegex =
+        /(?:https?:\/\/(?:cdn|media-files)\d+\.(?:bunkr\.[a-z]+|bunkr\.[a-z]+\.[a-z]+)\/[a-zA-Z0-9-_]+\.(?:jpg|jpeg|png|pnj|gif|webp|mp4|webm|ogg))/i;
+      const match = responseText.match(mediaUrlRegex);
+
+      if (match) {
+        return match[0];
+      } else {
+        throw new Error("Failed to extract media URL");
+      }
+    } catch (error) {
+      console.error(`Error fetching media URL from ${url}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  createImageElement() {
+    const img = document.createElement("img");
+    img.src = this.mediaInfo.url;
+    img.alt = this.mediaInfo.title || "";
+    return img;
+  }
+
+  createVideoElement() {
+    const video = document.createElement("video");
+    video.src = this.mediaInfo.url;
+    video.controls = true;
+    return video;
+  }
+
+  async embed() {
+    const mediaElement = await this.createMediaElement();
+    this.container.appendChild(mediaElement);
+  }
+}
+class IframeMedia extends Media {
+  constructor(mediaInfo, container, settings, attributes) {
+    super(mediaInfo, container, settings);
+    this.attributes = attributes;
+  }
+
+  createMediaElement() {
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("src", this.mediaInfo.url);
+
+    for (const key in this.attributes) {
+      iframe.setAttribute(key, this.attributes[key]);
+    }
+
+    const iframeLoadPromise = new Promise((resolve, reject) => {
+      iframe.addEventListener("load", () => {
+        console.log(`Loaded iframe: ${this.mediaInfo.url}`);
+        resolve();
+      });
+
+      iframe.addEventListener("error", () => {
+        reject(new Error(`Failed to load media: ${this.mediaInfo.url}`));
+      });
     });
+
+    return { iframe, iframeLoadPromise };
+  }
+
+  async embed() {
+    const { iframe, iframeLoadPromise } = this.createMediaElement();
+    this.container.appendChild(iframe);
+    await iframeLoadPromise;
+  }
+}
+class GenericIframeMedia extends IframeMedia {
+  constructor(mediaInfo, container, settings) {
+    super(mediaInfo, container, settings, {
+      frameborder: "0",
+      allowfullscreen: "",
+      loading: "lazy",
+    });
+  }
+
+  async embed() {
+    const { iframe, iframeLoadPromise } = this.createMediaElement();
+    iframe.classList.add(this.mediaInfo.id);
+    this.container.appendChild(iframe);
+    await iframeLoadPromise;
+  }
+}
+
+class VideoIframeMedia extends IframeMedia {
+  constructor(mediaInfo, container, settings) {
+    super(mediaInfo, container, settings, {
+      frameborder: "0",
+      allowfullscreen: "",
+      allow: "autoplay 'none'",
+    });
+  }
+
+  async embed() {
+    const { iframe, iframeLoadPromise } = this.createMediaElement();
+
+    if (this.mediaInfo.blur) {
+      const mediaOverlay = this.createMediaOverlay(iframe);
+      this.container.appendChild(mediaOverlay);
+    } else {
+      this.container.appendChild(iframe);
+    }
+    await iframeLoadPromise;
+  }
+}
+
+class SpotifyMedia extends IframeMedia {
+  constructor(mediaInfo, container, settings) {
+    super(mediaInfo, container, settings, {
+      style: "border-radius: 12px",
+      width: "100%",
+      height: "152",
+      frameborder: "0",
+      allowfullscreen: "",
+      loading: "lazy",
+    });
+  }
+
+  async embed() {
+    console.log("Embedding Spotify media");
+    const { iframe, iframeLoadPromise } = this.createMediaElement();
+    console.log("Media element created", iframe);
+    this.container.appendChild(iframe);
+    await iframeLoadPromise;
+  }
+}
+
+class SteamMedia extends IframeMedia {
+  constructor(mediaInfo, container, settings) {
+    const appId = mediaInfo.url.split("/app/")[1].split("/")[0];
+    const src = `https://store.steampowered.com/widget/${appId}/`;
+
+    super(mediaInfo, container, settings, {
+      src: src,
+      frameBorder: "0",
+      allowFullscreen: "true",
+      scrolling: "no",
+      height: "190",
+      width: "646",
+    });
+  }
+}
+
+export default class MediaFactory {
+  createMedia(mediaInfo, container, settings) {
+    switch (mediaInfo.type) {
+      case "image":
+        return new ImageMedia(mediaInfo, container, settings);
+      case "video":
+        return new VideoMedia(mediaInfo, container, settings);
+      case "genericIframe":
+        return new GenericIframeMedia(mediaInfo, container, settings);
+      case "videoIframe":
+        return new VideoIframeMedia(mediaInfo, container, settings);
+      case "tweet":
+        return new TweetMedia(mediaInfo, container, settings);
+      case "youtube":
+        return new YouTubeMedia(mediaInfo, container, settings);
+      case "steam":
+        return new SteamMedia(mediaInfo, container, settings);
+      case "imgurCollection":
+        return new ImgurMedia(mediaInfo, container, settings);
+      case "spotify":
+        return new SpotifyMedia(mediaInfo, container, settings);
+      case "reddit":
+        return new RedditMedia(mediaInfo, container, settings);
+      case "bunkrr":
+        return new BunkrrMedia(mediaInfo, container, settings);
+      default:
+        throw new Error(`Unsupported media type: ${mediaInfo.type}`);
+    }
+  }
 }

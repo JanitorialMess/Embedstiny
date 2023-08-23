@@ -121,7 +121,7 @@ async function sendMessages() {
     },
     {
       username: "4chanManiac",
-      urls: ["https://is2.4chan.org/gif/1691098162315442.webm"],
+      urls: "https://is2.4chan.org/gif/1691098162315442.webm",
       nsfw: true,
     },
     {

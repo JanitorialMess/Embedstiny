@@ -183,41 +183,43 @@ const hosts = [
   },
 ];
 
-function loadImage(img, url, onSuccess, onError) {
-  img.addEventListener("load", () => onSuccess(img));
-  img.addEventListener("error", () =>
-    onError(new Error(`Failed to load image: ${url}`)),
-  );
-  img.src = url;
+function loadImage(img, url) {
+  return new Promise((resolve, reject) => {
+    img.addEventListener("load", () => resolve(img));
+    img.addEventListener("error", () =>
+      reject(new Error(`Failed to load image: ${url}`)),
+    );
+    img.src = url;
+  });
 }
 
-export function loadImageWithFallback(img, url, onSuccess, onError) {
-  loadImage(img, url, onSuccess, () => {
+export async function loadImageWithFetchFallback(img, url) {
+  try {
+    await loadImage(img, url);
+  } catch (error) {
     console.warn("Direct loading failed, trying fetch fallback:", url);
 
-    fetch(url, {
+    const response = await fetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
       },
-    })
-      .then((response) => response.blob())
-      .then((blob) => {
-        const objectURL = URL.createObjectURL(blob);
-        const tempImg = new Image();
-        tempImg.addEventListener("load", () => {
-          img.setAttribute("src", objectURL);
-          onSuccess(img);
-        });
-        tempImg.addEventListener("error", () => {
-          onError(new Error(`Failed to load image: ${url}`));
-        });
-        tempImg.src = objectURL;
-      })
-      .catch((fetchError) => {
-        onError(fetchError);
+    });
+    const blob = await response.blob();
+    const objectURL = URL.createObjectURL(blob);
+    const tempImg = new Image();
+
+    await new Promise((resolve, reject) => {
+      tempImg.addEventListener("load", () => {
+        img.setAttribute("src", objectURL);
+        resolve();
       });
-  });
+      tempImg.addEventListener("error", () => {
+        reject(new Error(`Failed to load image: ${url}`));
+      });
+      tempImg.src = objectURL;
+    });
+  }
 }
 
 function createBlurOverlay() {
@@ -388,7 +390,7 @@ export function observeIframeInjection(
   return observer;
 }
 
-async function request(url, options = {}, responseProperty = "text") {
+export async function request(url, options = {}, responseProperty = "text") {
   try {
     const response = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
@@ -419,20 +421,28 @@ export async function resolveShortRedditUrl(shortUrl, options = {}) {
   }
 }
 
-export async function fetchBunkrrMedia(url) {
-  try {
-    const responseText = await request(url, {}, "text");
-    const mediaUrlRegex =
-      /(?:https?:\/\/(?:cdn|media-files)\d+\.(?:bunkr\.[a-z]+|bunkr\.[a-z]+\.[a-z]+)\/[a-zA-Z0-9-_]+\.(?:jpg|jpeg|png|pnj|gif|webp|mp4|webm|ogg))/i;
-    const match = responseText.match(mediaUrlRegex);
+export async function executeFunctionInPage(fn, args) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    const requestId = `request-${Math.random().toString(36).substr(2, 9)}`;
 
-    if (match) {
-      return match[0];
-    } else {
-      throw new Error("Failed to extract media URL");
-    }
-  } catch (error) {
-    console.error(`Error fetching media URL from ${url}: ${error.message}`);
-    throw error;
-  }
+    script.textContent = `
+      (${fn.toString()})(${JSON.stringify(args)}, ${JSON.stringify(requestId)});
+    `;
+
+    window.addEventListener("message", function listener(event) {
+      if (
+        event.source !== window ||
+        event.data.type !== "functionResponse" ||
+        event.data.requestId !== requestId
+      )
+        return;
+
+      window.removeEventListener("message", listener);
+      script.remove();
+      resolve();
+    });
+
+    (document.head || document.documentElement).appendChild(script);
+  });
 }
