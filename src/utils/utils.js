@@ -84,6 +84,18 @@ const hosts = [
     },
   },
   {
+    id: "kick",
+    regex: /^https?:\/\/(?:www\.)?kick\.com\/([\w]+)$/i,
+    mediaType: "videoIframe",
+    transform: (match) => `https://player.kick.com/${match[1]}?autoplay=false`,
+  },
+  {
+    id: "kick",
+    regex: /^https?:\/\/(?:www\.)?kick\.com\/[\w]+\?clip=(clip_[\w]+)$/i,
+    mediaType: "kick",
+    transform: (match) => match[0],
+  },
+  {
     id: "twitter",
     regex: /https?:\/\/(?:twitter|x)\.com\/\w+\/status\/\d+/i,
     mediaType: "tweet",
@@ -116,13 +128,9 @@ const hosts = [
       const url = await resolveShortRedditUrl(match[0], {
         method: "HEAD",
       });
-      const jsonResponse = await request(
-        `${url}.json`,
-        {
-          method: "GET",
-        },
-        "json",
-      );
+      const jsonResponse = await request(`${url}.json`, "json", {
+        method: "GET",
+      });
       const permalink = jsonResponse[0].data.children[0].data.permalink;
       return permalink;
     },
@@ -390,7 +398,7 @@ export function observeIframeInjection(
   return observer;
 }
 
-export async function request(url, options = {}, responseProperty = "text") {
+export async function request(url, responseProperty = "text", options = {}) {
   try {
     const response = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
@@ -413,7 +421,7 @@ export async function request(url, options = {}, responseProperty = "text") {
 
 export async function resolveShortRedditUrl(shortUrl, options = {}) {
   try {
-    const fullUrl = await request(shortUrl, options, "url");
+    const fullUrl = await request(shortUrl, "url", options);
     return fullUrl;
   } catch (error) {
     console.error(`Error resolving short URL ${shortUrl}: ${error.message}`);

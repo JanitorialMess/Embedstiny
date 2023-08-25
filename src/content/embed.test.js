@@ -141,6 +141,13 @@ async function sendMessages() {
       username: "BunkrrManiac",
       urls: "https://lol.su/v/aaaa-h.mp4",
     },
+    {
+      username: "KickManiac",
+      urls: [
+        "https://kick.com/iceposeidon",
+        "https://kick.com/iceposeidon?clip=clip_01H8E0YAZSF5X8XEBZ6CT6GEA2",
+      ],
+    },
   ];
 
   for (let message of messages) {

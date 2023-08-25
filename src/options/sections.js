@@ -178,6 +178,11 @@ export const hostSections = [
         info: "Embeds YouTube videos",
       },
       {
+        label: "Kick Clips",
+        id: "kick",
+        info: "Embeds Kick clips",
+      },
+      {
         label: "Twitch Clips",
         id: "twitchClips",
         info: "Embeds Twitch clips",

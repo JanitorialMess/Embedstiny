@@ -4,6 +4,7 @@ import {
   parseYouTubeUrl,
   executeFunctionInPage,
 } from "../utils/utils.js";
+import Hls from "hls.js";
 
 class Media {
   constructor(mediaInfo, container, settings) {
@@ -12,7 +13,7 @@ class Media {
     this.settings = settings;
   }
 
-  createMediaElement() {
+  async createMediaElement() {
     throw new Error("createMediaElement() must be implemented in subclasses");
   }
 
@@ -123,8 +124,8 @@ class Media {
     });
   }
 
-  embed() {
-    const mediaElement = this.createMediaElement();
+  async embed() {
+    const mediaElement = await this.createMediaElement();
     this.container.appendChild(mediaElement);
   }
 
@@ -370,6 +371,58 @@ class RedditMedia extends Media {
   }
 }
 
+class KickMedia extends VideoMedia {
+  async createMediaElement() {
+    const clipId = this.extractClipId(this.mediaInfo.url);
+    const clipData = await this.fetchClipData(clipId);
+    const videoUrl = clipData.video_url;
+    const thumbnailUrl = clipData.thumbnail_url;
+
+    this.mediaInfo = {
+      ...this.mediaInfo,
+      url: videoUrl,
+    };
+
+    let mediaElement = document.createElement("video");
+    mediaElement.setAttribute("poster", thumbnailUrl);
+    mediaElement.setAttribute("controls", "");
+
+    if (Hls.isSupported()) {
+      // FIXME: Setting any config breaks the player for some reason
+      const hls = new Hls();
+      hls.loadSource(videoUrl);
+      hls.attachMedia(mediaElement);
+
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        if (this.settings.videoOptions.autoplay) {
+          mediaElement.muted = true;
+          mediaElement.play();
+        }
+      });
+    } else if (mediaElement.canPlayType("application/vnd.apple.mpegurl")) {
+      mediaElement = await super.createMediaElement();
+      mediaElement.setAttribute("poster", thumbnailUrl);
+      //mediaelement.src = videoUrl;
+    } else {
+      throw new Error("HLS is not supported in this browser");
+    }
+
+    return mediaElement;
+  }
+
+  extractClipId(url) {
+    return url.match(/clip=([^&]+)/)[1];
+  }
+
+  async fetchClipData(clipId) {
+    const response = await request(
+      `https://kick.com/api/v2/clips/${clipId}`,
+      "json",
+    );
+    return response.clip;
+  }
+}
+
 class BunkrrMedia extends Media {
   async createMediaElement() {
     try {
@@ -408,7 +461,7 @@ class BunkrrMedia extends Media {
 
   async fetchBunkrrMedia(url) {
     try {
-      const responseText = await request(url, {}, "text");
+      const responseText = await request(url);
       const mediaUrlRegex =
         /(?:https?:\/\/(?:cdn|media-files)\d+\.(?:bunkr\.[a-z]+|bunkr\.[a-z]+\.[a-z]+)\/[a-zA-Z0-9-_]+\.(?:jpg|jpeg|png|pnj|gif|webp|mp4|webm|ogg))/i;
       const match = responseText.match(mediaUrlRegex);
@@ -529,9 +582,7 @@ class SpotifyMedia extends IframeMedia {
   }
 
   async embed() {
-    console.log("Embedding Spotify media");
     const { iframe, iframeLoadPromise } = this.createMediaElement();
-    console.log("Media element created", iframe);
     this.container.appendChild(iframe);
     await iframeLoadPromise;
   }
@@ -568,6 +619,8 @@ export default class MediaFactory {
         return new TweetMedia(mediaInfo, container, settings);
       case "youtube":
         return new YouTubeMedia(mediaInfo, container, settings);
+      case "kick":
+        return new KickMedia(mediaInfo, container, settings);
       case "steam":
         return new SteamMedia(mediaInfo, container, settings);
       case "imgurCollection":

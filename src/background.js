@@ -89,25 +89,32 @@ import StoreManager from "./utils/storeManager.js";
     }
 
     addDirectiveValue(directive, value) {
+      if (
+        this.directives[directive] &&
+        (this.directives[directive].has("none") ||
+          this.directives[directive].has("self")) &&
+        value !== "none" &&
+        value !== "self"
+      ) {
+        throw new Error(
+          `Unable to add the value '${value}' to the directive '${directive}'. The current directive is already restricted to either 'none' or 'self'.`,
+        );
+      }
       if (!this.directives[directive]) {
         this.directives[directive] = new Set();
       }
 
-      const wildcardMatch = value.match(/(https?:\/\/\*)/);
-      if (wildcardMatch) {
-        const baseDomain = value.replace(wildcardMatch[1], "");
-        const regex = new RegExp(
-          // eslint-disable-next-line no-useless-escape
-          `^https?:\/\/[^/]*${baseDomain.replace(".", "\\.")}`,
-        );
-        for (const existingValue of this.directives[directive]) {
-          if (regex.test(existingValue)) {
-            return;
-          }
-        }
+      if (this.directives[directive].has(value)) {
+        return;
       }
 
       this.directives[directive].add(value);
+    }
+
+    addDirectiveValues(directive, values) {
+      values.forEach((value) => {
+        this.addDirectiveValue(directive, value);
+      });
     }
 
     removeDirectiveValue(directive, value) {
@@ -117,6 +124,19 @@ import StoreManager from "./utils/storeManager.js";
     }
 
     updateDirectiveValues(directive, values) {
+      if (
+        this.directives[directive] &&
+        (this.directives[directive].has("none") ||
+          this.directives[directive].has("self")) &&
+        !values.includes("none") &&
+        !values.includes("self")
+      ) {
+        throw new Error(
+          `Unable to update the directive '${directive}' with the values '${values.join(
+            ", ",
+          )}'. The current directive is already restricted to either 'none' or 'self'.`,
+        );
+      }
       this.directives[directive] = new Set(values);
     }
 
@@ -139,39 +159,33 @@ import StoreManager from "./utils/storeManager.js";
           const originalCsp = details.responseHeaders[i].value;
           const cspParser = new CspParser(originalCsp);
 
-          cspParser.addDirectiveValue("default-src", "*");
-          cspParser.addDirectiveValue("default-src", "data:");
-          cspParser.addDirectiveValue("default-src", "blob:");
-          cspParser.addDirectiveValue("script-src", "'self'");
-          cspParser.addDirectiveValue("script-src", "'unsafe-inline'");
-          cspParser.addDirectiveValue("script-src", "*.youtube.com");
-          cspParser.addDirectiveValue("script-src", "*.twimg.com");
-          cspParser.addDirectiveValue("script-src", "*.twitter.com");
-          cspParser.addDirectiveValue("script-src", "*.imgur.com");
-          cspParser.addDirectiveValue("script-src", "embed-cdn.spotifycdn.com");
-          cspParser.addDirectiveValue("frame-src", "*.kick.com");
-          cspParser.addDirectiveValue("frame-src", "*.twitter.com");
+          cspParser.addDirectiveValues("script-src", [
+            "'self'",
+            "'unsafe-inline'",
+            "*.youtube.com",
+            "*.twimg.com",
+            "*.twitter.com",
+            "*.imgur.com",
+            "embed-cdn.spotifycdn.com",
+          ]);
+          cspParser.addDirectiveValues("frame-src", [
+            "*.kick.com",
+            "*.twitter.com",
+            "*.imgur.com",
+            "*.spotify.com",
+            "*.youtube.com",
+            "*.twitch.tv",
+            "*.streamable.com",
+            "*.strawpoll.com",
+            "*.vocaroo.com",
+            "*.reddit.com",
+            "https://imgur.com",
+            "https://vocaroo.com/",
+            "https://strawpoll.com/",
+          ]);
 
-          cspParser.addDirectiveValue("frame-src", "https://imgur.com/");
-          cspParser.addDirectiveValue("frame-src", "*.imgur.com");
-
-          cspParser.addDirectiveValue("frame-src", "*.spotify.com");
-          // FIXME:  https://www.youtube.com/s/player/4eae42b1/www-widgetapi.vflset/www-widgetapi.js (“script-src”).
-          cspParser.addDirectiveValue("frame-src", "*.youtube.com");
-          cspParser.addDirectiveValue("frame-src", "*.twitch.tv");
-
-          cspParser.addDirectiveValue("frame-src", "https://streamable.com/");
-          cspParser.addDirectiveValue("frame-src", "*.streamable.com");
-
-          cspParser.addDirectiveValue("frame-src", "https://strawpoll.com/");
-          cspParser.addDirectiveValue("frame-src", "*.strawpoll.com");
-
-          cspParser.addDirectiveValue("frame-src", "https://vocaroo.com");
-          cspParser.addDirectiveValue("frame-src", "*.vocaroo.com");
-          cspParser.addDirectiveValue("frame-src", "*.reddit.com");
-
-          cspParser.updateDirectiveValues("img-src", ["*", "data:"]);
-          cspParser.updateDirectiveValues("media-src", ["*", "data:"]);
+          cspParser.updateDirectiveValues("img-src", ["*", "data:", "blob:"]);
+          cspParser.updateDirectiveValues("media-src", ["*", "data:", "blob:"]);
 
           const modifiedCsp = cspParser.toString();
           details.responseHeaders[i].value = modifiedCsp;

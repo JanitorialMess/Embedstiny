@@ -34,7 +34,6 @@
         .makeHtml(release.body)
         .replace("\u2026", "...");
 
-      console.log("RELEASE", releaseHtml);
       html += `<h2 class="version">${release.name || release.tag_name}</h2>`;
       html += `<div>${releaseHtml}</div>`;
     });

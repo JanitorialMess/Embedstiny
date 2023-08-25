@@ -10,6 +10,7 @@ export const hosts = {
   streamable: true,
   youtube: true,
   twitchClips: true,
+  kick: true,
   twitter: true,
   vocaroo: true,
   strawpoll: true,
