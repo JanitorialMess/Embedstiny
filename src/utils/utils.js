@@ -321,29 +321,46 @@ export function parseYouTubeUrl(url) {
     const hostname = parsedUrl.hostname;
     const pathname = parsedUrl.pathname;
     const searchParams = parsedUrl.searchParams;
+    let timestamp;
 
-    let videoId = null;
-    let timestamp = null;
-    let playlistId = null;
+    const data = {
+      videoId: null,
+      playerVars: {
+        start: null,
+        list: null,
+      },
+      channelId: null,
+      isLiveStream: false,
+    };
 
     if (pathname.startsWith("/playlist")) {
-      playlistId = searchParams.get("list");
+      data.playerVars.list = searchParams.get("list");
     }
 
     if (pathname === "/watch" || pathname.startsWith("/shorts/watch")) {
-      videoId = searchParams.get("v");
+      data.videoId = searchParams.get("v");
       timestamp = searchParams.get("t") || searchParams.get("start");
     } else if (pathname.startsWith("/shorts/")) {
-      videoId = pathname.slice("/shorts/".length);
+      data.videoId = pathname.slice("/shorts/".length);
       timestamp = searchParams.get("t");
     } else if (pathname.startsWith("/embed/")) {
-      videoId = pathname.slice("/embed/".length);
+      data.videoId = pathname.slice("/embed/".length);
       timestamp = searchParams.get("start");
     } else if (pathname.startsWith("/live")) {
-      videoId = pathname.slice("/live/".length);
+      data.videoId = pathname.slice("/live/".length);
+      data.isLiveStream = true;
       timestamp = searchParams.get("t") || searchParams.get("start");
-    } else if (pathname.startsWith("/playlist")) {
-      playlistId = searchParams.get("list");
+    } else if (pathname.startsWith("/") && pathname.endsWith("/live")) {
+      data.channelId = pathname.slice("/".length).replace("@", "");
+      data.isLiveStream = true;
+    } else if (pathname.startsWith("/c/") && pathname.endsWith("/live")) {
+      data.channelId = pathname.slice("/c/".length, -"/live".length);
+      data.isLiveStream = true;
+    }
+
+    if (hostname === "youtu.be" && pathname.startsWith("/")) {
+      data.videoId = pathname.slice(1);
+      timestamp = searchParams.get("t") || searchParams.get("start");
     }
 
     if (
@@ -352,14 +369,10 @@ export function parseYouTubeUrl(url) {
         timestamp.includes("m") ||
         /^\d+$/.test(timestamp))
     ) {
-      timestamp = parseTimestamp(timestamp);
+      data.playerVars.start = parseTimestamp(timestamp);
     }
 
-    if (hostname === "youtu.be" && pathname.startsWith("/")) {
-      videoId = pathname.slice(1);
-    }
-
-    return { videoId, timestamp, playlistId };
+    return data;
   } catch (error) {
     console.error("Error parsing YouTube URL:", error);
   }
@@ -439,16 +452,17 @@ export async function executeFunctionInPage(fn, args) {
     `;
 
     window.addEventListener("message", function listener(event) {
-      if (
-        event.source !== window ||
-        event.data.type !== "functionResponse" ||
-        event.data.requestId !== requestId
-      )
-        return;
+      if (event.source !== window || event.data.requestId !== requestId) return;
 
-      window.removeEventListener("message", listener);
-      script.remove();
-      resolve();
+      if (event.data.type === "functionResponse") {
+        window.removeEventListener("message", listener);
+        script.remove();
+        resolve();
+      } else if (event.data.type === "functionError") {
+        window.removeEventListener("message", listener);
+        script.remove();
+        reject(new Error(event.data.error || `Error embedding media`));
+      }
     });
 
     (document.head || document.documentElement).appendChild(script);

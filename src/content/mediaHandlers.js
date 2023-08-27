@@ -242,10 +242,17 @@ class TweetMedia extends Media {
       twttr.widgets
         .createTweet(tweetId, container)
         .then(() => {
-          window.postMessage({ type: "functionResponse", requestId }, "*");
+          window.postMessage(
+            { type: "functionResponse", requestId },
+            window.location.href,
+          );
         })
-        .catch((error) => {
-          console.error("Failed to embed tweet:", error);
+        .catch(() => {
+          console.log("Twitter embed error", tweetId);
+          window.postMessage(
+            { type: "functionError", requestId },
+            window.location.href,
+          );
         });
     });
   }
@@ -259,50 +266,55 @@ class TweetMedia extends Media {
 
 class YouTubeMedia extends Media {
   async createMediaElement() {
-    const { videoId, timestamp, playlistId } = parseYouTubeUrl(
-      this.mediaInfo.url,
-    );
+    const parsedUrlData = parseYouTubeUrl(this.mediaInfo.url);
     const mediaElement = this.createContainer("youtube");
 
     const embedYouTube = async () => {
       await executeFunctionInPage(this.createYouTubeVideoInPage, {
-        videoId,
+        ...parsedUrlData,
         uniqueId: mediaElement.id,
-        timestamp,
-        playlistId,
       });
     };
 
     return { mediaElement, embedYouTube };
   }
 
-  createYouTubeVideoInPage(args, requestId) {
-    const { videoId, uniqueId, timestamp, playlistId } = args;
-
-    let playerConfig = {
+  createYouTubeVideoInPage(data, requestId) {
+    const playerConfig = {
       height: "360",
       width: "640",
-      playerVars: {
-        start: timestamp,
-        enablejsapi: 1,
-        origin: "https://www.destiny.gg",
-      },
-      events: {
+      events: handleEvents(),
+    };
+
+    function handleEvents() {
+      return {
         onReady: () => {
           window.postMessage({ type: "functionResponse", requestId }, "*");
         },
-      },
-    };
+        onError: (event) => {
+          window.postMessage(
+            { type: "functionError", requestId, error: event.data },
+            window.location.href,
+          );
+        },
+      };
+    }
 
-    if (playlistId) {
-      playerConfig["playerVars"]["list"] = playlistId;
-    } else {
-      playerConfig["videoId"] = videoId;
+    if (!data.videoId && !data.channelId && !data.playerVars.list) {
+      window.postMessage(
+        { type: "functionError", requestId },
+        window.location.href,
+      );
+    }
+
+    if (!data.channelId) {
+      playerConfig.videoId = data.videoId;
+      playerConfig.playerVars = data.playerVars;
     }
 
     const onYouTubeIframeAPIReady = () => {
       // eslint-disable-next-line no-undef
-      new YT.Player(uniqueId, playerConfig);
+      new YT.Player(data.uniqueId, playerConfig);
     };
 
     if (window.YT && window.YT.Player) {
@@ -346,17 +358,18 @@ class ImgurMedia extends Media {
 
 class RedditMedia extends Media {
   async createMediaElement(options = {}) {
-    const blockquote = this.createBlockquote(
-      {
-        class: "reddit-embed-bq",
-        "data-embed-height": options.height || "500",
-        "data-embed-showmedia": options.showMedia || "true",
-        "data-embed-theme": options.theme || "light",
-        "data-embed-showedits": options.showEdits || "true",
-        "data-embed-showusername": options.showUsername || "true",
-      },
-      this.mediaInfo.url,
-    );
+    let attributes = {
+      class: "reddit-embed-bq",
+      "data-embed-height": options.height || "500",
+      "data-embed-showmedia": options.showMedia || "true",
+      "data-embed-showusername": options.showUsername || "true",
+    };
+
+    if (options.theme) {
+      attributes["data-embed-theme"] = options.theme;
+    }
+
+    const blockquote = this.createBlockquote(attributes, this.mediaInfo.url);
 
     this.addScriptToBody("https://embed.reddit.com/widgets.js");
     this.container.appendChild(blockquote);
@@ -402,7 +415,6 @@ class KickMedia extends VideoMedia {
     } else if (mediaElement.canPlayType("application/vnd.apple.mpegurl")) {
       mediaElement = await super.createMediaElement();
       mediaElement.setAttribute("poster", thumbnailUrl);
-      //mediaelement.src = videoUrl;
     } else {
       throw new Error("HLS is not supported in this browser");
     }

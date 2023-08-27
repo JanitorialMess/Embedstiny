@@ -95,6 +95,8 @@ async function sendMessages() {
         "https://music.youtube.com/watch?v=UkxRaKZPC4k&si=kHBag1jjA-SgtZIk&t=7",
         "https://www.youtube.com/playlist?list=PLFs19LVskfNzQLZkGG_zf6yfYTp_3v_e6",
         "https://www.youtube.com/live/4Vr0yXDodI8?feature=share&t=23939",
+        "https://www.youtube.com/@tanaradoublechocolate",
+        "https://www.youtube.com/@ABCNews/live",
       ],
     },
     {
